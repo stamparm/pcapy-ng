@@ -7,6 +7,8 @@
  *
  */
 
+#define PY_SSIZE_T_CLEAN
+
 #include <pcap.h>
 #include <Python.h>
 #ifdef WIN32
