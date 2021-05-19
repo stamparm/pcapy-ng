@@ -5,7 +5,8 @@
 Pcapy-NG is a Python extension module that enables software written in
 Python to access the routines from the pcap packet capture library. It is
 a fork of [Pcapy](https://github.com/helpsystems/pcapy), which is not
-maintained any more.
+maintained any more and stopped working altogether on Python3.10 
+([Issue](https://github.com/helpsystems/pcapy/issues/70)).
 
 From libpcap's documentation: "Libpcap is a system-independent
 interface for user-level packet capture. Libpcap provides a portable
@@ -17,8 +18,8 @@ etc."
 
 ### Quick start ###
 
-Grab the latest stable release, unpack it and run 'python setup.py
-install' from the directory where you placed it. Isn't that easy?
+Grab the latest stable release, unpack it and run `python setup.py
+install` from the directory where you placed it. Isn't that easy?
 
 ### [Documentation](https://raw.githack.com/stamparm/pcapy-ng/master/pcapy.html) ###
 
@@ -41,7 +42,7 @@ directory where the pcapy's distribution has been unpacked: 'python
 setup.py install'. This will install the extension into the default
 Python's modules path; note that you might need special permissions to
 write there. For more information on what commands and options are
-available from setup.py, run 'python setup.py --help-commands'.
+available from setup.py, run `python setup.py --help-commands`.
 
 This extension has been tested under Linux and Windows systems
 and is known to work there, but it ought to work out-of-the-box on any
