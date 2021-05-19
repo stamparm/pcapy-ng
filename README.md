@@ -1,4 +1,4 @@
-## What is Pcapy? ##
+## What is Pcapy-NG? ##
 
 [![Build status](https://ci.appveyor.com/api/projects/status/pi4bqe4kgubgr37x?svg=true)](https://ci.appveyor.com/project/CoreSecurity/pcapy)
 
@@ -11,16 +11,11 @@ framework for low-level network monitoring. Applications include
 network statistics collection, security monitoring, network debugging,
 etc."
 
-## What makes pcapy different from the others? ##
+## What makes pcapy(-ng) different from the others? ##
 
  * works with Python threads.
  * works both in UNIX with libpcap and Windows with WinPcap.
  * provides a simpler Object Oriented API.
-
-## Getting Pcapy ##
-
-Current and past releases are available from
-https://github.com/CoreSecurity/pcapy.
 
 ## Setup ##
 
@@ -29,7 +24,7 @@ https://github.com/CoreSecurity/pcapy.
 Grab the latest stable release, unpack it and run 'python setup.py
 install' from the directory where you placed it. Isn't that easy?
 
-### [Documentation](https://rawgit.com/CoreSecurity/pcapy/master/pcapy.html) ###
+### [Documentation](https://raw.githack.com/stamparm/pcapy-ng/master/pcapy.html) ###
 
 ### Requirements ###
 
@@ -68,4 +63,4 @@ more information.
 
 Whether you want to report a bug, send a patch or give some
 suggestions on this package, drop us a few lines at
-`oss@coresecurity.com`.
+`miroslav@sqlmap.org`.
