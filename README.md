@@ -2,20 +2,16 @@
 
 [![Build status](https://ci.appveyor.com/api/projects/status/pi4bqe4kgubgr37x?svg=true)](https://ci.appveyor.com/project/CoreSecurity/pcapy)
 
-Pcapy is a Python extension module that enables software written in
-Python to access the routines from the pcap packet capture library.
+Pcapy-NG is a Python extension module that enables software written in
+Python to access the routines from the pcap packet capture library. It is
+a fork of [Pcapy](https://github.com/helpsystems/pcapy), which is not
+maintained any more.
 
 From libpcap's documentation: "Libpcap is a system-independent
 interface for user-level packet capture. Libpcap provides a portable
 framework for low-level network monitoring. Applications include
 network statistics collection, security monitoring, network debugging,
 etc."
-
-## What makes pcapy(-ng) different from the others? ##
-
- * works with Python threads.
- * works both in UNIX with libpcap and Windows with WinPcap.
- * provides a simpler Object Oriented API.
 
 ## Setup ##
 
@@ -62,5 +58,5 @@ more information.
 ## Contact Us ##
 
 Whether you want to report a bug, send a patch or give some
-suggestions on this package, drop us a few lines at
+suggestions on this package, drop a few lines at
 `miroslav@sqlmap.org`.
