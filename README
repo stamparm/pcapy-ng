@@ -3,7 +3,7 @@ https://github.com/stamparm/pcapy-ng/blob/master/README.md
 
 
 What is Pcapy-NG?
-==============
+=================
 
 Pcapy-NG is a Python extension module that enables software written in
 Python to access the routines from the pcap packet capture library. It is
