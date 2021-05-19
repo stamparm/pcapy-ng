@@ -1,12 +1,14 @@
 This file is an extract from the the online documentation at
-https://www.coresecurity.com/corelabs-research/open-source-tools/pcapy
+https://github.com/stamparm/pcapy-ng/blob/master/README.md
 
 
-What is Pcapy?
+What is Pcapy-NG?
 ==============
 
-Pcapy is a Python extension module that enables software written in
-Python to access the routines from the pcap packet capture library.
+Pcapy-NG is a Python extension module that enables software written in
+Python to access the routines from the pcap packet capture library. It is
+a replacement of Pcapy, which is not maintained any more and stopped working
+altogether on Python3.10.
 
 From libpcap's documentation: "Libpcap is a system-independent
 interface for user-level packet capture. Libpcap provides a portable
@@ -20,13 +22,6 @@ What makes pcapy different from the others?
  * works with Python threads.
  * works both in UNIX with libpcap and Windows with WinPcap.
  * provides a simpler Object Oriented API.
-
-
-Getting Pcapy
-=============
-
-Current and past releases are available from
-https://www.coresecurity.com/corelabs-research/open-source-tools/pcapy
 
 
 Setup
@@ -70,14 +65,13 @@ system where Python and libpcap are available.
 Licensing
 =========
 
-This software is provided under under a slightly modified version of
-the Apache Software License. See the accompanying LICENSE file for
-more information.
+This software is provided under under the Apache Software License.
+See the accompanying LICENSE file for more information.
 
 
 Contact Us
 ==========
 
 Whether you want to report a bug, send a patch or give some
-suggestions on this package, drop us a few lines at
-oss@coresecurity.com.
+suggestions on this package, drop a few lines at
+miroslav@sqlmap.org.

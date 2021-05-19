@@ -4,7 +4,7 @@
 
 Pcapy-NG is a Python extension module that enables software written in
 Python to access the routines from the pcap packet capture library. It is
-a fork of [Pcapy](https://github.com/helpsystems/pcapy), which is not
+a replacement of [Pcapy](https://github.com/helpsystems/pcapy), which is not
 maintained any more and stopped working altogether on Python3.10 
 ([Issue](https://github.com/helpsystems/pcapy/issues/70)).
 
@@ -50,9 +50,8 @@ system where Python and libpcap are available.
 
 ## Licensing ##
 
-This software is provided under under a slightly modified version of
-the Apache Software License. See the accompanying LICENSE file for
-more information.
+This software is provided under under the Apache Software License.
+See the accompanying LICENSE file for more information.
 
 ## Contact Us ##
 
