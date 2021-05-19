@@ -1,8 +1,8 @@
+## Copyright (c) 2021 Miroslav Stampar (miroslav@sqlmap.org)
 ## Copyright (c) 2014 CORE Security Technologies
 ##
-## This software is provided under under a slightly modified version
-## of the Apache Software License. See the accompanying LICENSE file
-## for more information.
+## This software is provided under under the Apache Software License.
+## See the accompanying LICENSE file for more information.
 ##
 
 import pcapy
