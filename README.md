@@ -30,7 +30,6 @@ install` from the directory where you placed it. Isn't that easy?
    6.0, are known to work.
  * Libpcap 0.7.2 or newer. Windows user are best to check WinPcap 3.0
    or newer.
- * A recent release of Pcapy.
 
 ### Compiling the source and installing ###
 
