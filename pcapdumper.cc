@@ -144,7 +144,7 @@ p_dump(register pcapdumper* pp, PyObject* args)
 {
 	PyObject *pyhdr;
 	u_char *data;
-	int       len;
+	Py_ssize_t len;
 
 	if(validate_pcapdumper(pp) == false){
         return NULL;  

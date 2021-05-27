@@ -68,7 +68,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name=PACKAGE_NAME,
-      version="1.0.3",
+      version="1.0.4",
       url="https://github.com/stamparm/pcapy-ng/",
       author="Miroslav Stampar",
       author_email="miroslav@sqlmap.org",

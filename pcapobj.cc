@@ -395,9 +395,9 @@ PythonCallBack(u_char *user,
 	       const u_char *packetdata)
 {
   PyObject *arglist, *result;
-  unsigned int *len;
+  Py_ssize_t *len;
   PcapCallbackContext *pctx;
-  len    = (unsigned int *)&header->caplen;
+  len    = (Py_ssize_t *)&header->caplen;
   pctx = (PcapCallbackContext *)user;
 
   PyEval_RestoreThread(pctx->thread_state);
@@ -771,7 +771,7 @@ p_sendpacket(register pcapobject* pp, PyObject* args)
 {
   int status;
   unsigned char* str;
-  unsigned int length;
+  Py_ssize_t length;
 
   if (Py_TYPE(pp) != &Pcaptype)
     {
