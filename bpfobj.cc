@@ -193,7 +193,7 @@ p_filter(register bpfobject* bpf, PyObject* args)
 {
   int status;
   u_char* packet;
-  unsigned int len;
+  Py_ssize_t len;
 
   if (Py_TYPE(bpf) != &BPFProgramType)
     {
