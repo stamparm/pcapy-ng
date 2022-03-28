@@ -45,13 +45,13 @@ if sys.platform == 'win32':
     macros.append(('WIN32', '1'))
 
 # HACK replace linker gcc with g++
-from distutils import sysconfig
+import sysconfig
+
 save_init_posix = sysconfig._init_posix
 
-
-def my_init_posix():
-    save_init_posix()
-    g = sysconfig._config_vars
+def my_init_posix(vars):
+    save_init_posix(vars)
+    g = sysconfig._CONFIG_VARS
     compiler = g['LDSHARED'].split()[0]
     flags = g['LDSHARED'].split()[1:]
     if compiler == 'gcc':
@@ -59,16 +59,15 @@ def my_init_posix():
     elif compiler == 'clang':
         g['LDSHARED'] = ' '.join(['clang++'] + flags)
         print('my_init_posix: changing LDSHARED =',
-              repr(g['LDSHARED']))
+            repr(g['LDSHARED']))
         print('to', repr(g['LDSHARED']))
 sysconfig._init_posix = my_init_posix
-
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name=PACKAGE_NAME,
-      version="1.0.5",
+      version="1.0.6",
       url="https://github.com/stamparm/pcapy-ng/",
       author="Miroslav Stampar",
       author_email="miroslav@sqlmap.org",
