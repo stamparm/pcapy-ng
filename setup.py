@@ -44,25 +44,6 @@ if sys.platform == 'win32':
     sources.append(os.path.join('win32', 'dllmain.cc'))
     macros.append(('WIN32', '1'))
 
-# HACK replace linker gcc with g++
-import sysconfig
-
-save_init_posix = sysconfig._init_posix
-
-def my_init_posix(vars):
-    save_init_posix(vars)
-    g = sysconfig._CONFIG_VARS
-    compiler = g['LDSHARED'].split()[0]
-    flags = g['LDSHARED'].split()[1:]
-    if compiler == 'gcc':
-        g['LDSHARED'] = ' '.join(['g++'] + flags)
-    elif compiler == 'clang':
-        g['LDSHARED'] = ' '.join(['clang++'] + flags)
-        print('my_init_posix: changing LDSHARED =',
-            repr(g['LDSHARED']))
-        print('to', repr(g['LDSHARED']))
-sysconfig._init_posix = my_init_posix
-
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
