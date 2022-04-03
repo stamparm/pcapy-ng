@@ -22,12 +22,12 @@ typedef struct {
 	pcap_dumper_t *dumper;
 } pcapdumper;
 
-static bool validate_pcapdumper(register const pcapdumper* pp);
+static bool validate_pcapdumper(const pcapdumper* pp);
 
 // Pdumpertype
 
 static void
-pcap_dealloc(register pcapdumper* pp)
+pcap_dealloc(pcapdumper* pp)
 {
   if ( pp->dumper )
     pcap_dump_close(pp->dumper);
@@ -39,8 +39,8 @@ pcap_dealloc(register pcapdumper* pp)
 
 
 // pcap methods
-static PyObject* p_close(register pcapdumper* pp, PyObject* args);
-static PyObject* p_dump(register pcapdumper* pp, PyObject* args);
+static PyObject* p_close(pcapdumper* pp, PyObject* args);
+static PyObject* p_dump(pcapdumper* pp, PyObject* args);
 
 
 static PyMethodDef p_methods[] = {
@@ -140,7 +140,7 @@ new_pcapdumper(pcap_dumper_t *dumper)
 }
 
 static PyObject*
-p_dump(register pcapdumper* pp, PyObject* args)
+p_dump(pcapdumper* pp, PyObject* args)
 {
 	PyObject *pyhdr;
 	u_char *data;
@@ -178,7 +178,7 @@ p_dump(register pcapdumper* pp, PyObject* args)
 // PdumperClose
 
 static PyObject*
-p_close(register pcapdumper* pp, PyObject* args)
+p_close(pcapdumper* pp, PyObject* args)
 {
     if(validate_pcapdumper(pp) == false){
         return NULL;  
@@ -194,7 +194,7 @@ p_close(register pcapdumper* pp, PyObject* args)
 }
 
 static bool
-validate_pcapdumper(register const pcapdumper* pp){
+validate_pcapdumper(const pcapdumper* pp){
     if (pp == NULL || Py_TYPE(pp) != &Pdumpertype) {
         PyErr_SetString(PcapError, "Not a pcapdumper object");
         return false;

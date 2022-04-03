@@ -36,7 +36,7 @@ typedef struct {
 // PcapType
 
 static PyObject*
-p_close(register pcapobject* pp, PyObject*)
+p_close(pcapobject* pp, PyObject*)
 {
   if ( pp->pcap )
     pcap_close(pp->pcap);
@@ -47,7 +47,7 @@ p_close(register pcapobject* pp, PyObject*)
 }
 
 static void
-pcap_dealloc(register pcapobject* pp)
+pcap_dealloc(pcapobject* pp)
 {
   p_close(pp, NULL);
 
@@ -62,27 +62,27 @@ err_closed(void)
 }
 
 // pcap methods
-static PyObject* p_getnet(register pcapobject* pp, PyObject* args);
-static PyObject* p_getmask(register pcapobject* pp, PyObject* args);
-static PyObject* p_setfilter( register pcapobject* pp, PyObject* args );
-static PyObject* p_next(register pcapobject* pp, PyObject*);
-static PyObject* p_dispatch(register pcapobject* pp, PyObject* args);
-static PyObject* p_loop(register pcapobject* pp, PyObject* args);
-static PyObject* p_datalink(register pcapobject* pp, PyObject* args);
-static PyObject* p_setdirection(register pcapobject* pp, PyObject* args);
-static PyObject* p_setnonblock(register pcapobject* pp, PyObject* args);
-static PyObject* p_getnonblock(register pcapobject* pp, PyObject* args);
-static PyObject* p_dump_open(register pcapobject* pp, PyObject* args);
-static PyObject* p_sendpacket(register pcapobject* pp, PyObject* args);
-static PyObject* p_stats( register pcapobject* pp, PyObject*);
-static PyObject* p__enter__( register pcapobject* pp, PyObject*);
-static PyObject* p_getfd(register pcapobject* pp, PyObject* args);
-static PyObject* p_set_snaplen(register pcapobject* pp, PyObject* args);
-static PyObject* p_set_promisc(register pcapobject* pp, PyObject* args);
-static PyObject* p_set_timeout(register pcapobject* pp, PyObject* args);
-static PyObject* p_set_buffer_size(register pcapobject* pp, PyObject* args);
-static PyObject* p_set_rfmon(register pcapobject* pp, PyObject* args);
-static PyObject* p_activate(register pcapobject* pp, PyObject* args);
+static PyObject* p_getnet(pcapobject* pp, PyObject* args);
+static PyObject* p_getmask(pcapobject* pp, PyObject* args);
+static PyObject* p_setfilter( pcapobject* pp, PyObject* args );
+static PyObject* p_next(pcapobject* pp, PyObject*);
+static PyObject* p_dispatch(pcapobject* pp, PyObject* args);
+static PyObject* p_loop(pcapobject* pp, PyObject* args);
+static PyObject* p_datalink(pcapobject* pp, PyObject* args);
+static PyObject* p_setdirection(pcapobject* pp, PyObject* args);
+static PyObject* p_setnonblock(pcapobject* pp, PyObject* args);
+static PyObject* p_getnonblock(pcapobject* pp, PyObject* args);
+static PyObject* p_dump_open(pcapobject* pp, PyObject* args);
+static PyObject* p_sendpacket(pcapobject* pp, PyObject* args);
+static PyObject* p_stats( pcapobject* pp, PyObject*);
+static PyObject* p__enter__( pcapobject* pp, PyObject*);
+static PyObject* p_getfd(pcapobject* pp, PyObject* args);
+static PyObject* p_set_snaplen(pcapobject* pp, PyObject* args);
+static PyObject* p_set_promisc(pcapobject* pp, PyObject* args);
+static PyObject* p_set_timeout(pcapobject* pp, PyObject* args);
+static PyObject* p_set_buffer_size(pcapobject* pp, PyObject* args);
+static PyObject* p_set_rfmon(pcapobject* pp, PyObject* args);
+static PyObject* p_activate(pcapobject* pp, PyObject* args);
 
 static PyMethodDef p_methods[] = {
   {"loop", (PyCFunction) p_loop, METH_VARARGS, "loops packet dispatching"},
@@ -242,7 +242,7 @@ static void ntos(char* dst, unsigned int n, int ip)
 }
 
 static PyObject*
-p_getnet(register pcapobject* pp, PyObject* args)
+p_getnet(pcapobject* pp, PyObject* args)
 {
   if (Py_TYPE(pp) != &Pcaptype)
     {
@@ -259,7 +259,7 @@ p_getnet(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_getmask(register pcapobject* pp, PyObject* args)
+p_getmask(pcapobject* pp, PyObject* args)
 {
   if (Py_TYPE(pp) != &Pcaptype)
     {
@@ -276,7 +276,7 @@ p_getmask(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_setfilter(register pcapobject* pp, PyObject* args)
+p_setfilter(pcapobject* pp, PyObject* args)
 {
   struct bpf_program bpfprog;
   int status;
@@ -313,7 +313,7 @@ p_setfilter(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_next(register pcapobject* pp, PyObject*)
+p_next(pcapobject* pp, PyObject*)
 {
   struct pcap_pkthdr *hdr = NULL;
   const unsigned char *buf = (const unsigned char*)"";
@@ -411,7 +411,7 @@ PythonCallBack(u_char *user,
   arglist = Py_BuildValue("Os#", hdr, packetdata, *len);
 #endif
 
-  result = PyEval_CallObject(pctx->pyfunc,arglist);
+  result = PyObject_CallObject(pctx->pyfunc,arglist);
 
   Py_XDECREF(arglist);
   if (result)
@@ -426,7 +426,7 @@ PythonCallBack(u_char *user,
 }
 
 static PyObject*
-p_dispatch(register pcapobject* pp, PyObject* args)
+p_dispatch(pcapobject* pp, PyObject* args)
 {
   int cant, ret;
   PyObject *PyFunc;
@@ -459,7 +459,7 @@ p_dispatch(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_stats(register pcapobject* pp, PyObject*)
+p_stats(pcapobject* pp, PyObject*)
 {
   if (Py_TYPE(pp) != &Pcaptype)
      {
@@ -481,7 +481,7 @@ p_stats(register pcapobject* pp, PyObject*)
 }
 
 static PyObject*
-p__enter__( register pcapobject* pp, PyObject*)
+p__enter__( pcapobject* pp, PyObject*)
 {
   if (Py_TYPE(pp) != &Pcaptype)
     {
@@ -497,7 +497,7 @@ p__enter__( register pcapobject* pp, PyObject*)
 }
 
 static PyObject*
-p_dump_open(register pcapobject* pp, PyObject* args)
+p_dump_open(pcapobject* pp, PyObject* args)
 {
   char *filename;
   pcap_dumper_t *ret;
@@ -526,7 +526,7 @@ p_dump_open(register pcapobject* pp, PyObject* args)
 
 
 static PyObject*
-p_loop(register pcapobject* pp, PyObject* args)
+p_loop(pcapobject* pp, PyObject* args)
 {
   int cant, ret;
   PyObject *PyFunc;
@@ -561,7 +561,7 @@ p_loop(register pcapobject* pp, PyObject* args)
 
 
 static PyObject*
-p_datalink(register pcapobject* pp, PyObject* args)
+p_datalink(pcapobject* pp, PyObject* args)
 {
 	if (Py_TYPE(pp) != &Pcaptype) {
 		PyErr_SetString(PcapError, "Not a pcap object");
@@ -577,7 +577,7 @@ p_datalink(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_setdirection(register pcapobject* pp, PyObject* args)
+p_setdirection(pcapobject* pp, PyObject* args)
 {
 	if (Py_TYPE(pp) != &Pcaptype) {
 		PyErr_SetString(PcapError, "Not a pcap object");
@@ -603,7 +603,7 @@ p_setdirection(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_setnonblock(register pcapobject* pp, PyObject* args)
+p_setnonblock(pcapobject* pp, PyObject* args)
 {
 	if (Py_TYPE(pp) != &Pcaptype) {
 		PyErr_SetString(PcapError, "Not a pcap object");
@@ -630,7 +630,7 @@ p_setnonblock(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_getnonblock(register pcapobject* pp, PyObject* args)
+p_getnonblock(pcapobject* pp, PyObject* args)
 {
 	if (Py_TYPE(pp) != &Pcaptype) {
 		PyErr_SetString(PcapError, "Not a pcap object");
@@ -651,7 +651,7 @@ p_getnonblock(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_set_snaplen(register pcapobject* pp, PyObject* args)
+p_set_snaplen(pcapobject* pp, PyObject* args)
 {
 	if (Py_TYPE(pp) != &Pcaptype) {
 		PyErr_SetString(PcapError, "Not a pcap object");
@@ -671,7 +671,7 @@ p_set_snaplen(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_set_promisc(register pcapobject* pp, PyObject* args)
+p_set_promisc(pcapobject* pp, PyObject* args)
 {
 	if (Py_TYPE(pp) != &Pcaptype) {
 		PyErr_SetString(PcapError, "Not a pcap object");
@@ -691,7 +691,7 @@ p_set_promisc(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_set_timeout(register pcapobject* pp, PyObject* args)
+p_set_timeout(pcapobject* pp, PyObject* args)
 {
 	if (Py_TYPE(pp) != &Pcaptype) {
 		PyErr_SetString(PcapError, "Not a pcap object");
@@ -711,7 +711,7 @@ p_set_timeout(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_set_buffer_size(register pcapobject* pp, PyObject* args)
+p_set_buffer_size(pcapobject* pp, PyObject* args)
 {
 	if (Py_TYPE(pp) != &Pcaptype) {
 		PyErr_SetString(PcapError, "Not a pcap object");
@@ -731,7 +731,7 @@ p_set_buffer_size(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_set_rfmon(register pcapobject* pp, PyObject* args)
+p_set_rfmon(pcapobject* pp, PyObject* args)
 {
 	if (Py_TYPE(pp) != &Pcaptype) {
 		PyErr_SetString(PcapError, "Not a pcap object");
@@ -751,7 +751,7 @@ p_set_rfmon(register pcapobject* pp, PyObject* args)
 }
 
 static PyObject*
-p_activate(register pcapobject* pp, PyObject*)
+p_activate(pcapobject* pp, PyObject*)
 {
 	if (Py_TYPE(pp) != &Pcaptype) {
 		PyErr_SetString(PcapError, "Not a pcap object");
@@ -767,7 +767,7 @@ p_activate(register pcapobject* pp, PyObject*)
 
 
 static PyObject*
-p_sendpacket(register pcapobject* pp, PyObject* args)
+p_sendpacket(pcapobject* pp, PyObject* args)
 {
   int status;
   unsigned char* str;
@@ -807,7 +807,7 @@ p_sendpacket(register pcapobject* pp, PyObject* args)
 
 #ifndef WIN32
 static PyObject*
-p_getfd(register pcapobject* pp, PyObject* args)
+p_getfd(pcapobject* pp, PyObject* args)
 {
   if (Py_TYPE(pp) != &Pcaptype)
     {

@@ -26,7 +26,7 @@ typedef struct {
 // BPFProgramType
 
 static void
-bpfprog_dealloc(register bpfobject* bpf)
+bpfprog_dealloc(bpfobject* bpf)
 {
 #ifndef WIN32 // XXX: is this missing from winpcap 2.3?
   pcap_freecode(&bpf->bpf);
@@ -38,8 +38,8 @@ PyObject* BPFError;
 
 
 // BPFProgram methods
-static PyObject* p_filter(register bpfobject* bpf, PyObject* args);
-static PyObject* p_get_bpf(register bpfobject* bpf, PyObject* args);
+static PyObject* p_filter(bpfobject* bpf, PyObject* args);
+static PyObject* p_get_bpf(bpfobject* bpf, PyObject* args);
 static PyObject* p_new_bpfobject(PyTypeObject *type, PyObject* args, PyObject *kwags);
 
 
@@ -189,7 +189,7 @@ p_new_bpfobject(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
 
 static PyObject*
-p_filter(register bpfobject* bpf, PyObject* args)
+p_filter(bpfobject* bpf, PyObject* args)
 {
   int status;
   u_char* packet;
@@ -219,7 +219,7 @@ p_filter(register bpfobject* bpf, PyObject* args)
 }
 
 static PyObject*
-p_get_bpf(register bpfobject* bpf, PyObject* args)
+p_get_bpf(bpfobject* bpf, PyObject* args)
 {
   struct bpf_insn *insn;
   int i;

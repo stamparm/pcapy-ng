@@ -34,16 +34,16 @@ typedef struct {
 // Pkthdr_Type
 
 static void
-pcap_dealloc(register pkthdr* pp)
+pcap_dealloc(pkthdr* pp)
 {
   PyObject_Del(pp);
 }
 
 
 // pcap methods
-static PyObject* p_getts(register pkthdr* pp, PyObject* args);
-static PyObject* p_getcaplen(register pkthdr* pp, PyObject* args);
-static PyObject* p_getlen(register pkthdr* pp, PyObject* args);
+static PyObject* p_getts(pkthdr* pp, PyObject* args);
+static PyObject* p_getcaplen(pkthdr* pp, PyObject* args);
+static PyObject* p_getlen(pkthdr* pp, PyObject* args);
 
 
 static PyMethodDef p_methods[] = {
@@ -148,7 +148,7 @@ new_pcap_pkthdr(const struct pcap_pkthdr* hdr)
 }
 
 static PyObject*
-p_getts(register pkthdr* pp, PyObject* args)
+p_getts(pkthdr* pp, PyObject* args)
 {
   if (Py_TYPE(pp) != &Pkthdr_type) {
 	  PyErr_SetString(PcapError, "Not a pkthdr object");
@@ -159,7 +159,7 @@ p_getts(register pkthdr* pp, PyObject* args)
 }
 
 static PyObject*
-p_getcaplen(register pkthdr* pp, PyObject* args)
+p_getcaplen(pkthdr* pp, PyObject* args)
 {
   if (Py_TYPE(pp) != &Pkthdr_type) {
 	  PyErr_SetString(PcapError, "Not a pkthdr object");
@@ -170,7 +170,7 @@ p_getcaplen(register pkthdr* pp, PyObject* args)
 }
 
 static PyObject*
-p_getlen(register pkthdr* pp, PyObject* args)
+p_getlen(pkthdr* pp, PyObject* args)
 {
   if (Py_TYPE(pp) != &Pkthdr_type) {
 	  PyErr_SetString(PcapError, "Not a pkthdr object");
