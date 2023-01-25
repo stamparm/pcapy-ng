@@ -57,6 +57,10 @@ Python's modules path; note that you might need special permissions to
 write there. For more information on what commands and options are
 available from setup.py, run 'python setup.py --help-commands'.
 
+For Windows, you will need to setup WPDPACK_BASE envrionment variable
+to a location where you unziped WinPcap Developer's Pack see:
+https://www.winpcap.org/devel.htm
+
 This extension has been tested under Linux and Windows systems
 and is known to work there, but it ought to work out-of-the-box on any
 system where Python and libpcap are available.
