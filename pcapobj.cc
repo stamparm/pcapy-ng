@@ -448,11 +448,16 @@ p_dispatch(pcapobject* pp, PyObject* args)
   ret = pcap_dispatch(pp->pcap, cant, PythonCallBack, (u_char*)&ctx);
   PyEval_RestoreThread(ctx.thread_state);
 
+  // Fix: Check if a Python exception occurred inside the callback
+  if (PyErr_Occurred()) {
+      return NULL;
+  }
+
   if(ret<0) {
     if (ret!=-2)
       /* pcap error, pcap_breakloop was not called so error is not set */
       PyErr_SetString(PcapError, pcap_geterr(pp->pcap));
-    return NULL;
+    return NULL; // This handles the error case correctly now
   }
 
   return Py_BuildValue("i", ret);
