@@ -155,7 +155,7 @@ p_getts(pkthdr* pp, PyObject* args)
 	  return NULL;
   }
 
-  return Py_BuildValue("(ll)", pp->ts.tv_sec, pp->ts.tv_usec);
+  return Py_BuildValue("(ll)", (long)pp->ts.tv_sec, (long)pp->ts.tv_usec);
 }
 
 static PyObject*
