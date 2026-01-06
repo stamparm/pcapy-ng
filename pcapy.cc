@@ -109,7 +109,15 @@ open_live(PyObject *self, PyObject *args)
 /* If we are on windows, then device is an LUID like "Local Area Connection".
  * pcap on Windows needs a GUID like "\Device\NPF_{AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA}".
  */
+      char *old_device = device; // Keep track of whether we switched pointers
       device = luid_to_guid(device);
+      // luid_to_guid returns a new allocated string.
+      // If it fails, it returns NULL, which we must handle.
+      if (device == NULL) {
+           // Fallback or error handling if needed,
+           // though the original code didn't handle NULL return well here.
+           device = old_device;
+      }
 #endif
   int status = pcap_lookupnet(device, &net, &mask, errbuff);
   if(status)
@@ -122,7 +130,7 @@ open_live(PyObject *self, PyObject *args)
 
   pt = pcap_open_live(device, snaplen, promisc!=0, to_ms, errbuff);
 #ifdef WIN32
-      free(device);
+      if (device != old_device) free(device);
 #endif
   
   if(!pt)

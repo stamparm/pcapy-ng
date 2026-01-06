@@ -28,9 +28,8 @@ typedef struct {
 static void
 bpfprog_dealloc(bpfobject* bpf)
 {
-#ifndef WIN32 // XXX: is this missing from winpcap 2.3?
+  // Fix: Removed #ifndef WIN32. Always free the BPF code.
   pcap_freecode(&bpf->bpf);
-#endif
   PyObject_Del(bpf);
 }
 
