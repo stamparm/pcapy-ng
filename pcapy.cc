@@ -67,15 +67,20 @@ findalldevs(PyObject *self, PyObject *args)
   PyObject* list = PyList_New(0);
   while(cursor)
     {
-#ifdef WIN32 
-/* If we are on windows, then display LUID's like "Local Area Connection"
- * instead of GUID's like "\Device\NPF_{AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA}".
- */
+      PyObject *tmp_name;
+#ifdef WIN32
+      /* If we are on windows, then display LUID's like "Local Area Connection"
+       * instead of GUID's like "\Device\NPF_{AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA}".
+       */
       char *luid = get_windows_interface_friendly_name(cursor->name);
-      PyList_Append(list, Py_BuildValue("s", luid));
+      tmp_name = Py_BuildValue("s", luid);
+      PyList_Append(list, tmp_name);
+      Py_DECREF(tmp_name); // Fix: Decrement reference count
       free(luid);
 #else
-      PyList_Append(list, Py_BuildValue("s", cursor->name));
+      tmp_name = Py_BuildValue("s", cursor->name);
+      PyList_Append(list, tmp_name);
+      Py_DECREF(tmp_name); // Fix: Decrement reference count
 #endif
       cursor = cursor->next;
     }
