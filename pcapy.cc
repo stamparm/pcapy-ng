@@ -41,7 +41,7 @@ lookupdev(PyObject* self, PyObject* args)
       return NULL;
     }
 
-  return Py_BuildValue("u", dev);
+  return Py_BuildValue("s", dev);
 }
 
 static PyObject*
