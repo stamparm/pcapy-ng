@@ -68,6 +68,7 @@ static PyObject* p_setfilter( pcapobject* pp, PyObject* args );
 static PyObject* p_next(pcapobject* pp, PyObject*);
 static PyObject* p_dispatch(pcapobject* pp, PyObject* args);
 static PyObject* p_loop(pcapobject* pp, PyObject* args);
+static PyObject* p_breakloop(pcapobject* pp, PyObject* args);
 static PyObject* p_datalink(pcapobject* pp, PyObject* args);
 static PyObject* p_setdirection(pcapobject* pp, PyObject* args);
 static PyObject* p_setnonblock(pcapobject* pp, PyObject* args);
@@ -86,6 +87,7 @@ static PyObject* p_activate(pcapobject* pp, PyObject* args);
 
 static PyMethodDef p_methods[] = {
   {"loop", (PyCFunction) p_loop, METH_VARARGS, "loops packet dispatching"},
+  {"breakloop", (PyCFunction) p_breakloop, METH_NOARGS, "break the loop for packet dispatching"},
   {"dispatch", (PyCFunction) p_dispatch, METH_VARARGS, "dispatchs packets"},
   {"next", (PyCFunction) p_next, METH_NOARGS, "returns next packet"},
   {"setfilter", (PyCFunction) p_setfilter, METH_VARARGS, "compiles and sets a BPF capture filter"},
@@ -554,11 +556,30 @@ p_loop(pcapobject* pp, PyObject* args)
   PyEval_RestoreThread(ctx.thread_state);
 
   if(ret<0) {
-    if (ret!=-2)
+    if (ret!=-2) {
       /* pcap error, pcap_breakloop was not called so error is not set */
       PyErr_SetString(PcapError, pcap_geterr(pp->pcap));
-    return NULL;
+      return NULL;
+    }
   }
+
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
+static PyObject*
+p_breakloop(pcapobject* pp, PyObject*)
+{
+  if (Py_TYPE(pp) != &Pcaptype)
+    {
+      PyErr_SetString(PcapError, "Not a pcap object");
+      return NULL;
+    }
+
+  if (!pp->pcap)
+    return err_closed();
+
+  pcap_breakloop(pp->pcap);
 
   Py_INCREF(Py_None);
   return Py_None;
