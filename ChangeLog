@@ -1,5 +1,19 @@
+2026-06-26 Miroslav Stampar <miroslav@sqlmap.org>
+    * Version 2.0.0 tagged with major new capabilities (in-C classification + scaling):
+        * loop_filtered(): classify each packet in C and invoke the callback only for admitted
+          classes; provably-inert noise never builds a Python object. Generic profile (0=OTHER,
+          1=FLOW_HEAD, 2=SET_MATCH) and a built-in security profile (profile=1).
+        * loop_to_buffer(): same classification, GIL released for the whole loop, writes admitted
+          packets into a shared buffer for parallel worker draining (no per-packet Python).
+        * filtered_stats(): live per-class counter snapshot, pollable from another thread.
+        * next_batch(): capture up to N packets in one call (amortized C<->Python boundary).
+        * set_fanout(group_id, fanout_type=PACKET_FANOUT_HASH) + PACKET_FANOUT_* constants:
+          join a live capture to a Linux kernel PACKET_FANOUT group to scale capture across
+          multiple sockets/threads on one interface (flow-hashed, no duplicate capture).
+        * Classic Reader API (loop/next/dispatch/setfilter/...) unchanged and backward compatible.
+
 2018-06-17 Alberto Solino <asolino@coresecurity.com>
-    * Version 0.11.4 tagged with the following changes 
+    * Version 0.11.4 tagged with the following changes
         * bpfobject support get_bpf method (by @palaviv)
         * Monitor mode support & missing methods fix (by @gpotter2)
         * Documentation update (@gpotter2)

@@ -4,4 +4,7 @@ include ChangeLog
 include pcapy.xml
 include pcapy.html
 include *.h
+include *.cc
+include pyproject.toml
 recursive-include win32 *.cc
+recursive-include tests *

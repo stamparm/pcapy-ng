@@ -14,6 +14,9 @@
 #ifdef WIN32
 #include <Iphlpapi.h> // IPHelper API for luid/guid conversions
 #endif
+#if defined(__linux__)
+#include <linux/if_packet.h>   // PACKET_FANOUT_* mode constants
+#endif
 
 #include "pcapy.h"
 #include "pcapobj.h"
@@ -338,6 +341,19 @@ initpcapy(void)
   PyModule_AddIntConstant(m, "PCAP_D_INOUT", 0);
   PyModule_AddIntConstant(m, "PCAP_D_IN", 1);
   PyModule_AddIntConstant(m, "PCAP_D_OUT", 2);
+
+  /* PACKET_FANOUT modes for Reader.set_fanout() (Linux AF_PACKET; from linux/if_packet.h). */
+#if defined(__linux__) && defined(PACKET_FANOUT)
+  PyModule_AddIntConstant(m, "PACKET_FANOUT_HASH", PACKET_FANOUT_HASH);
+  PyModule_AddIntConstant(m, "PACKET_FANOUT_LB", PACKET_FANOUT_LB);
+  PyModule_AddIntConstant(m, "PACKET_FANOUT_CPU", PACKET_FANOUT_CPU);
+#ifdef PACKET_FANOUT_ROLLOVER
+  PyModule_AddIntConstant(m, "PACKET_FANOUT_ROLLOVER", PACKET_FANOUT_ROLLOVER);
+#endif
+#ifdef PACKET_FANOUT_RND
+  PyModule_AddIntConstant(m, "PACKET_FANOUT_RND", PACKET_FANOUT_RND);
+#endif
+#endif
 
   d = PyModule_GetDict(m);
   PcapError = PyErr_NewException("pcapy.PcapError", NULL, NULL );

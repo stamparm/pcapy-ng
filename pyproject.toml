@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# Project metadata is kept in setup.py (it also defines the C Extension); this file adds the
+# modern build-system declaration and the cibuildwheel configuration for producing
+# self-contained, precompiled wheels (no deploy-time C compiler or libpcap-dev required).
+
+[tool.cibuildwheel]
+# CPython only (the extension uses the CPython C-API); covers maintained 3.x.
+build = "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+# 32-bit and PyPy are not targeted.
+skip = "*_i686 *-musllinux_i686 pp*"
+build-verbosity = 1
+# Smoke-test every built wheel in an isolated env: import, run loop(), and confirm the
+# fast-path API (loop_filtered) is present.
+test-command = "python {project}/tests/wheel_smoketest.py {project}/tests/96pings.pcap"
+
+[tool.cibuildwheel.linux]
+# libpcap headers are needed to COMPILE; auditwheel then vendors libpcap.so INTO the wheel
+# so the installed wheel is self-contained at runtime. Cover both manylinux (yum/dnf) and
+# musllinux (apk) base images.
+before-all = [
+    "yum install -y libpcap-devel || dnf install -y libpcap-devel || true",
+    "apk add --no-cache libpcap-dev || true",
+]
+
+[tool.cibuildwheel.macos]
+before-all = "brew install libpcap || true"
