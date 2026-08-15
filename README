@@ -33,7 +33,7 @@ Install from PyPI:
 
     pip install pcapy-ng
 
-Releases after 2.0.0 provide Linux and macOS wheels for CPython 3.9-3.14 with
+Releases from 2.0.1 on provide Linux and macOS wheels for CPython 3.9-3.14 with
 libpcap vendored in. There are no Windows wheels; on Windows, and on any other
 platform or interpreter, pip builds from the sdist.
 

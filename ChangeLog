@@ -1,3 +1,25 @@
+2026-08-15 Miroslav Stampar <miroslav@sqlmap.org>
+    * Version 2.0.1 tagged (packaging, CI and documentation release; no API changes):
+        * PyPI metadata modernized: long description is now README.md (rendered as Markdown),
+          plus an accurate summary, keywords, project URLs, SPDX license, classifiers and a
+          python_requires of 2.7 and 3.8+.
+        * Packaging fix: data_files no longer globs directories, so a leftover tests/__pycache__
+          can no longer abort the build with "can't copy 'tests/__pycache__'".
+        * Python 3.14 supported: added to the cibuildwheel matrix (CPython 3.9-3.14) and to the
+          test matrix; builds and passes the full test suite.
+        * Release workflow fixed: it now triggers on this project's bare version tags, builds and
+          tests wheels for Linux (x86_64/aarch64, glibc and musl) and macOS (x86_64/arm64),
+          verifies the sdist, and uploads to PyPI only from a published GitHub Release or an
+          explicit manual dispatch. New tests workflow builds and tests every commit.
+        * Documentation rewritten to describe the full 2.0 API surface - loop_filtered(),
+          filtered_stats(), loop_to_buffer(), next_batch(), set_fanout(), flow-head tracking,
+          large IPv4 address-set matching and the built-in security profile - and to state what
+          is actually shipped (no Windows wheels; Windows builds from source with the Npcap SDK).
+        * Dropped the obsolete AppVeyor configuration (Python 2.7/3.4/3.5 against WinPcap).
+        * Fix: pcap_dealloc() dropped the new reference to None returned by p_close(), leaking
+          one reference to None per destroyed Reader (invisible since None became immortal in
+          CPython 3.12).
+
 2026-06-26 Miroslav Stampar <miroslav@sqlmap.org>
     * Version 2.0.0 tagged with major new capabilities (in-C classification + scaling):
         * loop_filtered(): classify each packet in C and invoke the callback only for admitted

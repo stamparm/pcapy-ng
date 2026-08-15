@@ -49,9 +49,9 @@ pcapy-ng behaves exactly like Pcapy.
 pip install pcapy-ng
 ```
 
-Releases after 2.0.0 ship an sdist plus Linux (x86_64/aarch64, glibc and musl) and macOS
+Releases from 2.0.1 on ship an sdist plus Linux (x86_64/aarch64, glibc and musl) and macOS
 (x86_64/arm64) wheels for CPython 3.9–3.14; those wheels vendor libpcap, so nothing is compiled
-at install time. Everywhere else — Windows, BSD, and for 2.0.0 itself — pip falls back to the
+at install time. Everywhere else — Windows, BSD, and on 2.0.0 and older — pip falls back to the
 sdist, which needs a C++ compiler and libpcap headers (`libpcap-dev` / `libpcap-devel`; on
 Windows the [Npcap SDK](https://npcap.com/#download), with `WPDPACK_BASE` pointing at it). To
 build a checkout:
