@@ -365,5 +365,5 @@ from the sdist against the Npcap SDK.
 
 Apache Software License — see
 [LICENSE](https://github.com/stamparm/pcapy-ng/blob/master/LICENSE). Pcapy-NG is maintained by Miroslav Stampar
-(`miroslav@sqlmap.org`) and builds on the original Pcapy by CORE Security. Bug reports, patches
+(`contact@sekuripy.hr`) and builds on the original Pcapy by CORE Security. Bug reports, patches
 and suggestions welcome.

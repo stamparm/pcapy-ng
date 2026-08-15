@@ -1,4 +1,4 @@
-2026-08-15 Miroslav Stampar <miroslav@sqlmap.org>
+2026-08-15 Miroslav Stampar <contact@sekuripy.hr>
     * Version 2.0.1 tagged (packaging, CI and documentation release; no API changes):
         * PyPI metadata modernized: long description is now README.md (rendered as Markdown),
           plus an accurate summary, keywords, project URLs, SPDX license, classifiers and a
@@ -20,7 +20,7 @@
           one reference to None per destroyed Reader (invisible since None became immortal in
           CPython 3.12).
 
-2026-06-26 Miroslav Stampar <miroslav@sqlmap.org>
+2026-06-26 Miroslav Stampar <contact@sekuripy.hr>
     * Version 2.0.0 tagged with major new capabilities (in-C classification + scaling):
         * loop_filtered(): classify each packet in C and invoke the callback only for admitted
           classes; provably-inert noise never builds a Python object. Generic profile (0=OTHER,

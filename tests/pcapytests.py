@@ -1,4 +1,4 @@
-## Copyright (c) 2021 Miroslav Stampar (miroslav@sqlmap.org)
+## Copyright (c) 2021-2026 Miroslav Stampar (contact@sekuripy.hr)
 ## Copyright (c) 2014 CORE Security Technologies
 ##
 ## This software is provided under under the Apache Software License.
