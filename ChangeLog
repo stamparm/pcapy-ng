@@ -1,4 +1,18 @@
 2026-08-15 Miroslav Stampar <contact@sekuripy.hr>
+    * Version 2.0.2 tagged (bugfix release; no API or behaviour changes):
+        * Fixed the slot index of the loop_filtered()/loop_to_buffer() IPv4 address set. It
+          multiplied the address and then kept the LOW bits of the product, which discarded
+          the mixing, so consecutive addresses (an expanded CIDR block) collapsed onto one
+          slot and linear probing degenerated into a scan: ~6850 probes per lookup on a
+          100k-entry sequential set, against ~1.3 for random addresses. The index now takes
+          the HIGH bits of the product, which costs the same and brings sequential sets to
+          ~1.0 probes; measured 2.6x-24x faster on sequential sets of 1k-1M entries, with
+          random sets unchanged. Matching results, the packed addr_set format and the API are
+          unchanged.
+        * Added address-set membership tests covering large sequential ranges (up to 1M
+          entries), random sets, expanded CIDR blocks, duplicates and the 0.0.0.0 sentinel.
+
+2026-08-15 Miroslav Stampar <contact@sekuripy.hr>
     * Version 2.0.1 tagged (packaging, CI and documentation release; no API changes):
         * PyPI metadata modernized: long description is now README.md (rendered as Markdown),
           plus an accurate summary, keywords, project URLs, SPDX license, classifiers and a
