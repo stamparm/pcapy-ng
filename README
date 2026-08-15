@@ -1,77 +1,64 @@
-This file is an extract from the the online documentation at
+This file is a plain-text extract of the documentation at
 https://github.com/stamparm/pcapy-ng/blob/master/README.md
+(the full documentation, with examples, is in README.md).
 
 
 What is Pcapy-NG?
 =================
 
-Pcapy-NG is a Python extension module that enables software written in
-Python to access the routines from the pcap packet capture library. It is
-a replacement of Pcapy, which is not maintained any more and stopped working
-altogether on Python3.10.
+Pcapy-NG is a Python extension module that lets Python programs use the libpcap
+packet-capture library. It is a maintained replacement for Pcapy, which is no
+longer maintained and stopped working on Python 3.10. The classic Pcapy API
+(open_live, open_offline, loop, next, setfilter, dump_open, ...) is unchanged,
+so existing Pcapy code keeps working.
 
-From libpcap's documentation: "Libpcap is a system-independent
-interface for user-level packet capture. Libpcap provides a portable
-framework for low-level network monitoring. Applications include
-network statistics collection, security monitoring, network debugging,
-etc."
+On top of that it provides an optional set of capture primitives for programs
+where per-packet Python work is the bottleneck:
 
-What makes pcapy different from the others?
--------------------------------------------
-
- * works with Python threads.
- * works both in UNIX with libpcap and Windows with WinPcap.
- * provides a simpler Object Oriented API.
+ * loop_filtered()  - classify packets in C, invoke the callback only for the
+                      classes you admit (flow heads, large IPv4 address-set
+                      matches, or a built-in security profile).
+ * loop_to_buffer() - same classification, but writes admitted packets into a
+                      buffer you provide, with the GIL released.
+ * filtered_stats() - live per-class counters, pollable from another thread.
+ * next_batch()     - read up to N packets in a single call.
+ * set_fanout()     - join a live handle to a Linux PACKET_FANOUT group so
+                      several handles can share one interface's traffic.
 
 
 Setup
 =====
 
-Quick start
------------
+Install from PyPI:
 
-Grab the latest stable release, unpack it and run 'python setup.py
-install' from the directory where you placed it. Isn't that easy?
+    pip install pcapy-ng
 
+Releases after 2.0.0 provide Linux and macOS wheels for CPython 3.9-3.14 with
+libpcap vendored in. There are no Windows wheels; on Windows, and on any other
+platform or interpreter, pip builds from the sdist.
 
-Requirements
-------------
+Building from source requires:
 
- * A Python interpreter. Versions 2.1.3 and newer are known to work.
- * A C++ compiler. GCC G++ 2.95, as well as Microsoft Visual Studio
-   6.0, are known to work.
- * Libpcap 0.7.2 or newer. Windows user are best to check WinPcap 3.0
-   or newer.
- * A recent release of Pcapy.
+ * A Python interpreter. 2.7 and 3.x are supported.
+ * A C++ compiler.
+ * Libpcap and its headers (libpcap-dev / libpcap-devel). On Windows, the
+   Npcap SDK, with WPDPACK_BASE pointing at it.
 
-Compiling the source and installing
------------------------------------
+To build and install a checkout:
 
-As this extension is written in C++ it needs to be compiled for the
-host system before it can be accessed from Python. Fortunately this
-process has been made easy by the setup.py script. In order to compile
-and install the source execute the following command from the
-directory where the pcapy's distribution has been unpacked: 'python
-setup.py install'. This will install the extension into the default
-Python's modules path; note that you might need special permissions to
-write there. For more information on what commands and options are
-available from setup.py, run 'python setup.py --help-commands'.
-
-This extension has been tested under Linux and Windows systems
-and is known to work there, but it ought to work out-of-the-box on any
-system where Python and libpcap are available.
+    pip install .
 
 
 Licensing
 =========
 
-This software is provided under under the Apache Software License.
+This software is provided under the Apache Software License.
 See the accompanying LICENSE file for more information.
 
 
 Contact Us
 ==========
 
-Whether you want to report a bug, send a patch or give some
-suggestions on this package, drop a few lines at
-miroslav@sqlmap.org.
+Whether you want to report a bug, send a patch or give some suggestions on this
+package, drop a few lines at miroslav@sqlmap.org or open an issue at
+https://github.com/stamparm/pcapy-ng/issues.

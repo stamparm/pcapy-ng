@@ -58,7 +58,11 @@ p_close(pcapobject* pp, PyObject*)
 static void
 pcap_dealloc(pcapobject* pp)
 {
-  p_close(pp, NULL);
+  /* p_close() returns a new reference to None; dropping it on the floor leaked one
+     reference to None per destroyed Reader (harmless once None became immortal in 3.12,
+     but detected by tests/pcapytests.py testEOFValue on older interpreters). */
+  PyObject* res = p_close(pp, NULL);
+  Py_XDECREF(res);
 
   PyObject_Del(pp);
 }

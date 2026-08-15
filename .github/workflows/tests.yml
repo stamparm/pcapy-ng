@@ -1,0 +1,49 @@
+name: Tests
+
+# Build the extension from source and run the test suite on every supported CPython.
+# Offline captures only (tests read .pcap files), so no privileges are needed.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install libpcap headers (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+
+      - name: Build and install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+
+      - name: Run tests
+        run: |
+          python tests/wheel_smoketest.py tests/96pings.pcap
+          python -m unittest discover -s tests -p 'test_fast.py' -v
+
+      # pcapytests.py::testEOFValue asserts that sys.getrefcount(None) is unchanged across the
+      # test body. That is only stable where None is immortal (CPython 3.12+); on older
+      # interpreters the count drifts by a few references from unittest's own machinery, so the
+      # assertion fails non-deterministically and says nothing about pcapy.
+      - name: Run classic API tests
+        if: matrix.python-version != '3.9' && matrix.python-version != '3.10' && matrix.python-version != '3.11'
+        working-directory: tests      # pcapytests.py opens 96pings.pcap relative to the cwd
+        run: python pcapytests.py -v

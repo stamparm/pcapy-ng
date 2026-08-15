@@ -1,15 +1,24 @@
 ## What is Pcapy-NG? ##
 
-[![Build status](https://ci.appveyor.com/api/projects/status/pi4bqe4kgubgr37x?svg=true)](https://ci.appveyor.com/project/CoreSecurity/pcapy)
+[![Tests](https://github.com/stamparm/pcapy-ng/actions/workflows/tests.yml/badge.svg)](https://github.com/stamparm/pcapy-ng/actions/workflows/tests.yml)
 
 Pcapy-NG is a Python extension module that lets Python programs use the
-[libpcap](https://www.tcpdump.org/) packet-capture library. It is a maintained
-replacement for [Pcapy](https://github.com/helpsystems/pcapy), which stopped working
-on Python 3.10 ([issue](https://github.com/helpsystems/pcapy/issues/70)), and it works
-on both Python 2 and Python 3.
+[libpcap](https://www.tcpdump.org/) packet-capture library. It is a maintained replacement for
+[Pcapy](https://github.com/helpsystems/pcapy), which is no longer maintained and stopped working
+on Python 3.10 ([issue](https://github.com/helpsystems/pcapy/issues/70)). The classic Pcapy API —
+`open_live`, `open_offline`, `loop`, `next`, `setfilter`, `dump_open` and the rest — is unchanged,
+so existing Pcapy code keeps working; it builds on Linux, macOS and Windows (libpcap / Npcap),
+on Python 2.7 and on current Python 3.
 
-It keeps the classic Pcapy API and adds one thing: **`loop_filtered`**, a capture loop that
-does a first pass of filtering *in C* and only hands Python the packets you actually want.
+On top of that it provides an optional set of capture primitives for programs where per-packet
+Python work is the bottleneck: `loop_filtered` classifies packets in C and invokes the callback
+only for the classes you admit, `loop_to_buffer` writes admitted packets into a buffer you own
+with the GIL released, `next_batch` returns many packets per call, `filtered_stats` exposes live
+counters, and `set_fanout` joins a live handle to a Linux `PACKET_FANOUT` group so several handles
+can share one interface's traffic. The classifier can track flow heads (the first N packets of
+each flow), match against arbitrarily large IPv4 address sets, and run a built-in security profile
+that tags DNS, HTTP, TLS/QUIC handshakes and TCP SYNs. All of it is opt-in — ignore it and
+pcapy-ng behaves exactly like Pcapy.
 
 ---
 
@@ -25,6 +34,8 @@ does a first pass of filtering *in C* and only hands Python the packets you actu
   - [`loop_to_buffer`: filling a shared buffer](#loop_to_buffer-filling-a-shared-buffer)
   - [Live counters and non-Ethernet links](#live-counters-and-non-ethernet-links)
 - [Built-in security profile](#built-in-security-profile)
+- [`next_batch`: many packets per call](#next_batch-many-packets-per-call)
+- [`set_fanout`: several handles on one interface](#set_fanout-several-handles-on-one-interface)
 - [API reference](#api-reference)
 - [Examples](#examples)
 - [Building & compatibility](#building--compatibility)
@@ -38,12 +49,20 @@ does a first pass of filtering *in C* and only hands Python the packets you actu
 pip install pcapy-ng
 ```
 
-Pre-built wheels bundle libpcap, so there is nothing to compile at install time. To build
-from source you need a C++ compiler and libpcap headers (`libpcap-dev` / `libpcap-devel`):
+Releases after 2.0.0 ship an sdist plus Linux (x86_64/aarch64, glibc and musl) and macOS
+(x86_64/arm64) wheels for CPython 3.9–3.14; those wheels vendor libpcap, so nothing is compiled
+at install time. Everywhere else — Windows, BSD, and for 2.0.0 itself — pip falls back to the
+sdist, which needs a C++ compiler and libpcap headers (`libpcap-dev` / `libpcap-devel`; on
+Windows the [Npcap SDK](https://npcap.com/#download), with `WPDPACK_BASE` pointing at it). To
+build a checkout:
 
 ```sh
-python setup.py install        # or: pip install .
+pip install .
 ```
+
+The C sources still compile against Python 2.7, but the PEP 517 build requires
+`setuptools >= 61` (Python 3 only), so a Python 2.7 build has to be driven the old way:
+`python setup.py install`.
 
 ---
 
@@ -239,15 +258,59 @@ The per-class counts in the return tuple are in `index` order
 
 ---
 
+## `next_batch`: many packets per call ##
+
+`next_batch(max_n)` reads up to `max_n` packets in a single call and returns them as
+`(packet_bytes, packed_meta)`: `packet_bytes` is every packet concatenated, and `packed_meta` is
+an array of fixed 16-byte records — one per packet, four native-endian `uint32`s
+`(sec, usec, offset, caplen)` — where `offset`/`caplen` slice a packet out of `packet_bytes`.
+An empty `packed_meta` means EOF (offline) or timeout (live). It crosses the C↔Python boundary
+once per batch instead of once per packet, and unlike `loop_filtered` it does no classification —
+you get everything, with timestamps.
+
+```python
+import struct
+pkts, meta = cap.next_batch(1024)
+for i in range(0, len(meta), 16):
+    sec, usec, off, caplen = struct.unpack_from("=IIII", meta, i)
+    data = pkts[off:off + caplen]
+```
+
+---
+
+## `set_fanout`: several handles on one interface ##
+
+One capture socket is one thread's worth of work. On Linux, `set_fanout(group_id, fanout_type)`
+joins a live, activated handle to a kernel `PACKET_FANOUT` group: open N handles on the same
+interface, put them all in the same group, read each in its own thread or process, and the kernel
+spreads the interface's packets across them without duplicating any. With the default
+`PACKET_FANOUT_HASH` every flow stays on one handle, so per-flow state stays consistent.
+
+```python
+cap = pcapy.open_live(dev, 65535, True, 100)
+cap.set_fanout(0x4711, pcapy.PACKET_FANOUT_HASH)
+```
+
+Constants: `PACKET_FANOUT_HASH`, `PACKET_FANOUT_LB`, `PACKET_FANOUT_CPU`, `PACKET_FANOUT_ROLLOVER`,
+`PACKET_FANOUT_RND`. Linux only, live handles only; anything else raises. See
+[`examples/07_fanout_scale.py`](examples/07_fanout_scale.py).
+
+---
+
 ## API reference ##
 
 **Module:** `open_live(dev, snaplen, promisc, timeout_ms)`, `open_offline(path)`,
-`create(dev)`, `findalldevs()`, `lookupdev()`, `compile(...)`, `DLT_*` constants.
+`create(dev)`, `findalldevs()`, `lookupdev()`, `compile(...)`, the `DLT_*`, `PCAP_D_*` and
+`PACKET_FANOUT_*` constants, and the `PcapError` / `BPFError` exceptions.
 
 **Reader (classic):** `next()` → `(hdr, data)`, `loop(cnt, cb)`, `dispatch(cnt, cb)`,
 `setfilter(bpf)`, `datalink()`, `getnet()`, `getmask()`, `getnonblock()/setnonblock()`,
 `setdirection(...)`, `stats()` → `(recv, drop, ifdrop)`, `dump_open(path)`,
 `sendpacket(data)`, `getfd()`, `close()`. Usable as a context manager.
+
+**Reader (unactivated, from `create()`):** `set_snaplen(n)`, `set_promisc(bool)`,
+`set_timeout(ms)`, `set_buffer_size(n)`, `set_rfmon(bool)` (monitor mode, where supported),
+then `activate()`.
 
 **Reader (filtering):**
 
@@ -256,14 +319,13 @@ The per-class counts in the return tuple are in `index` order
 | `loop_filtered(cnt, cb, admit_mask=7, addr_set=b"", flow_cutoff=0, dpi_ports=None, tls_ports=None, dns_port=53, l2_offset=14, profile=0)` | classify in C; call `cb(hdr, data, cls)` only for admitted classes; return `(admitted, dropped, <per-class counts>)` |
 | `loop_to_buffer(cnt, buf, ...same...)` | same, but write admitted packets into `buf` with the GIL released |
 | `filtered_stats()` | live counter snapshot of the current/last run |
-| `next_batch(max_n)` | advanced: read up to `max_n` packets in one call as `(packet_bytes, packed_meta)` |
+| `next_batch(max_n)` | read up to `max_n` packets in one call as `(packet_bytes, packed_meta)` |
+| `set_fanout(group_id, fanout_type=PACKET_FANOUT_HASH)` | Linux: join this live handle to a kernel `PACKET_FANOUT` group |
 
 `cnt = -1`/`0` means "until EOF (offline) or forever (live)".
 
-`next_batch` returns `(packet_bytes, packed_meta)`: `packet_bytes` is all the packets
-concatenated, and `packed_meta` is an array of fixed 16-byte records, one per packet, each four
-native-endian `uint32`s — `(sec, usec, offset, caplen)` — where `offset`/`caplen` slice the
-packet out of `packet_bytes`. An empty `packed_meta` means EOF/timeout.
+Code that must also run against stock Pcapy can probe with
+`hasattr(reader, "loop_filtered")` and fall back to `loop()` / `next()`.
 
 ---
 
@@ -280,16 +342,21 @@ Runnable, self-contained scripts in [`examples/`](examples/) — each takes a de
 | `04_flow_heads.py` | grab the first packets of each connection (`flow_cutoff`) |
 | `05_shared_memory_ring.py` | `loop_to_buffer` producer + multiprocess consumers |
 | `06_live_stats.py` | poll `filtered_stats()` from another thread |
+| `07_fanout_scale.py` | `set_fanout`: several capture threads on one interface (Linux) |
 
 ---
 
 ## Building & compatibility ##
 
-Python 2.7 and 3.x; Linux, macOS and Windows (libpcap / Npcap). The filtering methods are
-available wherever pcapy-ng is built; code can probe with `hasattr(reader, "loop_filtered")`
-and fall back to `loop()`/`next()` on stock Pcapy. Wheels are produced with
-[cibuildwheel](https://cibuildwheel.readthedocs.io/) and vendor libpcap, so deployment needs no
-compiler or `libpcap-dev`.
+Builds from source on Python 2.7 and Python 3.x, on Linux, macOS and Windows (libpcap / Npcap);
+all it needs is a C++ compiler and the libpcap headers. CI builds and tests every commit on
+CPython 3.9–3.14 (Linux and macOS). Wheels are produced for those two platforms only, with
+[cibuildwheel](https://cibuildwheel.readthedocs.io/), and vendor libpcap, so installing from a
+wheel needs no compiler or `libpcap-dev`. **There are no Windows wheels** — on Windows pip builds
+from the sdist against the Npcap SDK.
+
+`set_fanout` is Linux-only; the classifier used by `loop_filtered` / `loop_to_buffer` is IPv4-only
+(IPv6 packets are always `OTHER`). Everything else is portable.
 
 ---
 

@@ -16,6 +16,7 @@ sudo python 03_filter_in_c.py eth0           # live, needs root / CAP_NET_RAW
 | `04_flow_heads.py` | Grab the first packets of each connection (`flow_cutoff`) — e.g. the TLS server name. |
 | `05_shared_memory_ring.py` | `loop_to_buffer` producer + multiprocess consumers (Python 3). |
 | `06_live_stats.py` | Poll `filtered_stats()` from another thread during capture. |
+| `07_fanout_scale.py` | `set_fanout`: spread one interface across several capture threads (Linux). |
 
 Don't have a capture handy? Make one (any traffic will do):
 

@@ -7,14 +7,20 @@ build-backend = "setuptools.build_meta"
 # self-contained, precompiled wheels (no deploy-time C compiler or libpcap-dev required).
 
 [tool.cibuildwheel]
-# CPython only (the extension uses the CPython C-API); covers maintained 3.x.
-build = "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
-# 32-bit and PyPy are not targeted.
-skip = "*_i686 *-musllinux_i686 pp*"
+# CPython only (the extension uses the CPython C-API); covers the maintained 3.x series.
+# Source builds still work on older interpreters (including 2.7), they just get no wheel.
+# Free-threaded builds (cp3XXt-*) are deliberately not selected: the module does not declare
+# Py_mod_gil support yet.
+build = "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
+# 32-bit and non-CPython interpreters are not targeted.
+skip = "*_i686 *-musllinux_i686 pp* gp*"
 build-verbosity = 1
-# Smoke-test every built wheel in an isolated env: import, run loop(), and confirm the
-# fast-path API (loop_filtered) is present.
-test-command = "python {project}/tests/wheel_smoketest.py {project}/tests/96pings.pcap"
+# Test every built wheel in an isolated env: import it, run the classic loop(), confirm the
+# fast-path API is present, then run the full fast-path unit test battery against the wheel.
+test-command = [
+    "python {project}/tests/wheel_smoketest.py {project}/tests/96pings.pcap",
+    "python -m unittest discover -s {project}/tests -p test_fast.py -v",
+]
 
 [tool.cibuildwheel.linux]
 # libpcap headers are needed to COMPILE; auditwheel then vendors libpcap.so INTO the wheel
@@ -26,4 +32,5 @@ before-all = [
 ]
 
 [tool.cibuildwheel.macos]
+# macOS ships libpcap in the SDK; the brew package is only a fallback for older images.
 before-all = "brew install libpcap || true"
