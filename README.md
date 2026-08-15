@@ -174,7 +174,7 @@ least-recently-seen key on collision — so memory is bounded even under high-ca
 at the cost of an occasional re-count when a long-idle flow is evicted. IP fragments are not
 reassembled (non-first fragments aren't matched as flow heads).
 
-See [`examples/04_flow_heads.py`](examples/04_flow_heads.py).
+See [`examples/04_flow_heads.py`](https://github.com/stamparm/pcapy-ng/blob/master/examples/04_flow_heads.py).
 
 ### Address-set matching ###
 
@@ -210,7 +210,7 @@ Each record is `[u32 caplen little-endian][u8 class][caplen bytes]`, written bac
 **no padding/alignment**. The only metadata stored is the caplen and the class — **no timestamp
 and no wire length**; if you need those, use `loop_filtered` (its callback gets the full
 `Pkthdr`). When the buffer fills, extra packets are counted in `overflow` instead of overrunning
-it. See [`examples/05_shared_memory_ring.py`](examples/05_shared_memory_ring.py).
+it. See [`examples/05_shared_memory_ring.py`](https://github.com/stamparm/pcapy-ng/blob/master/examples/05_shared_memory_ring.py).
 
 ### Live counters and non-Ethernet links ###
 
@@ -293,7 +293,7 @@ cap.set_fanout(0x4711, pcapy.PACKET_FANOUT_HASH)
 
 Constants: `PACKET_FANOUT_HASH`, `PACKET_FANOUT_LB`, `PACKET_FANOUT_CPU`, `PACKET_FANOUT_ROLLOVER`,
 `PACKET_FANOUT_RND`. Linux only, live handles only; anything else raises. See
-[`examples/07_fanout_scale.py`](examples/07_fanout_scale.py).
+[`examples/07_fanout_scale.py`](https://github.com/stamparm/pcapy-ng/blob/master/examples/07_fanout_scale.py).
 
 ---
 
@@ -331,7 +331,8 @@ Code that must also run against stock Pcapy can probe with
 
 ## Examples ##
 
-Runnable, self-contained scripts in [`examples/`](examples/) — each takes a device (live) or a
+Runnable, self-contained scripts in
+[`examples/`](https://github.com/stamparm/pcapy-ng/tree/master/examples) — each takes a device (live) or a
 `.pcap` (offline) as its first argument:
 
 | File | Shows |
@@ -362,6 +363,7 @@ from the sdist against the Npcap SDK.
 
 ## License & credits ##
 
-Apache Software License — see [LICENSE](LICENSE). Pcapy-NG is maintained by Miroslav Stampar
+Apache Software License — see
+[LICENSE](https://github.com/stamparm/pcapy-ng/blob/master/LICENSE). Pcapy-NG is maintained by Miroslav Stampar
 (`miroslav@sqlmap.org`) and builds on the original Pcapy by CORE Security. Bug reports, patches
 and suggestions welcome.
