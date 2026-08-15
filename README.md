@@ -118,7 +118,7 @@ and size-limited:
    are) while ignoring the bulk that follows.
 2. **Large set membership** — "deliver packets whose source or destination is in this set of
    addresses," where the set has thousands or millions of entries. That won't fit in a BPF
-   program; here it's an O(1) hash lookup.
+   program; here it's an average O(1) hash lookup.
 
 If you only need stateless port/proto matching, use BPF. Reach for `loop_filtered` when you
 need flow state or set membership (and you can combine both with a BPF prefilter).

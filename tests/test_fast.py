@@ -704,5 +704,177 @@ class TestClassicAPI(unittest.TestCase):
             os.unlink(path)
 
 
+# --------------------------------------------------------------------------------------- #
+# addr_set (generic profile, class 2 = SET_MATCH)
+#
+# The set is an open-addressing hash table keyed on the raw network-order address. These
+# tests pin down its *behaviour* -- exact membership for sequential/CIDR-style ranges, for
+# random sets, and for the awkward inputs (duplicates, the 0.0.0.0 sentinel, both directions)
+# -- for set sizes from a handful to a million. They assert results only, never timing, so
+# they are stable on a loaded machine or a slow runner.
+# --------------------------------------------------------------------------------------- #
+
+C_SET_MATCH = 2
+ADMIT_SET_ONLY = 1 << C_SET_MATCH
+
+
+def _ip2int(s):
+    a, b, c, d = (int(x) for x in s.split("."))
+    return (a << 24) | (b << 16) | (c << 8) | d
+
+
+def _int2ip(v):
+    return "%d.%d.%d.%d" % ((v >> 24) & 0xFF, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF)
+
+
+def _packed(ints):
+    return b"".join(struct.pack("!I", v) for v in ints)
+
+
+def _run_set(packets, addr_set_bytes):
+    """Run the generic profile admitting SET_MATCH only; return (admitted, dropped)."""
+    path = G.temp_pcap(packets)
+    try:
+        r = pcapy.open_offline(path)
+        res = r.loop_filtered(-1, lambda h, d, c: None, ADMIT_SET_ONLY, addr_set_bytes, 0)
+        return res[0], res[1]
+    finally:
+        os.unlink(path)
+
+
+def _pkt(src, dst):
+    return G.eth() + G.ipv4(6, src, dst, G.tcp(1234, 80, 0x10, b"x" * 4))
+
+
+class TestAddrSetMembership(unittest.TestCase):
+    SEQ_BASE = _ip2int("198.18.0.0")
+
+    def _sequential(self, size):
+        return [self.SEQ_BASE + i for i in range(size)]
+
+    def _random(self, size, seed):
+        rnd = random.Random(seed)
+        out, seen = [], set()
+        while len(out) < size:
+            v = rnd.randrange(1, 0xFFFFFFFF)
+            if v not in seen:
+                seen.add(v)
+                out.append(v)
+        return out
+
+    def _check(self, ips, size):
+        """Members at the edges and the middle of the set must match; neighbours must not."""
+        members = [ips[0], ips[size // 2], ips[-1]]
+        outside = [self.SEQ_BASE - 1, self.SEQ_BASE + size + 1, _ip2int("10.11.12.13")]
+        outside = [v for v in outside if v not in set(ips)]
+
+        packets = [_pkt(_int2ip(v), "10.0.0.9") for v in members]
+        packets += [_pkt("10.0.0.9", _int2ip(v)) for v in members]      # dst side too
+        packets += [_pkt(_int2ip(v), "10.0.0.9") for v in outside]
+        admitted, dropped = _run_set(packets, _packed(ips))
+        self.assertEqual(admitted, 2 * len(members))
+        self.assertEqual(dropped, len(outside))
+
+    def test_sequential_10(self):
+        self._check(self._sequential(10), 10)
+
+    def test_sequential_1000(self):
+        self._check(self._sequential(1000), 1000)
+
+    def test_sequential_100000(self):
+        # a /16 plus change: the case that used to collapse into one probe chain
+        self._check(self._sequential(100000), 100000)
+
+    def test_sequential_1000000(self):
+        self._check(self._sequential(1000000), 1000000)
+
+    def test_random_1000(self):
+        self._check(self._random(1000, seed=11), 1000)
+
+    def test_random_100000(self):
+        self._check(self._random(100000, seed=12), 100000)
+
+    def test_full_cidr_block_every_address_matches(self):
+        """Every address of an expanded /20 matches, and the addresses either side do not."""
+        base = _ip2int("203.0.112.0")
+        block = [base + i for i in range(4096)]
+        probes = [block[0], block[1], block[2048], block[4094], block[-1]]
+        packets = [_pkt(_int2ip(v), "10.0.0.9") for v in probes]
+        packets.append(_pkt(_int2ip(base - 1), "10.0.0.9"))
+        packets.append(_pkt(_int2ip(base + 4096), "10.0.0.9"))
+        admitted, dropped = _run_set(packets, _packed(block))
+        self.assertEqual(admitted, len(probes))
+        self.assertEqual(dropped, 2)
+
+    def test_many_disjoint_cidr_blocks(self):
+        """Sixteen /24s scattered across the address space, all members must be found."""
+        blocks = []
+        for i in range(16):
+            base = _ip2int("%d.%d.0.0" % (11 + i * 7, i * 3 + 1))
+            blocks.extend(base + j for j in range(256))
+        probes = blocks[::137]
+        packets = [_pkt(_int2ip(v), "10.0.0.9") for v in probes]
+        admitted, dropped = _run_set(packets, _packed(blocks))
+        self.assertEqual(admitted, len(probes))
+        self.assertEqual(dropped, 0)
+
+    def test_duplicates_and_zero_sentinel_ignored(self):
+        """0.0.0.0 is the empty-slot sentinel and duplicates are harmless."""
+        ips = self._sequential(1000)
+        noisy = ips + ips[:500] + [0, 0, 0]
+        probes = [ips[0], ips[499], ips[-1]]
+        packets = [_pkt(_int2ip(v), "10.0.0.9") for v in probes]
+        packets.append(_pkt("10.0.0.9", "10.0.0.8"))
+        admitted, dropped = _run_set(packets, _packed(noisy))
+        self.assertEqual(admitted, len(probes))
+        self.assertEqual(dropped, 1)
+
+    def test_sequential_and_random_mixed(self):
+        ips = self._sequential(50000) + self._random(50000, seed=13)
+        probes = [ips[0], ips[49999], ips[50000], ips[-1]]
+        packets = [_pkt(_int2ip(v), "10.0.0.9") for v in probes]
+        packets.append(_pkt("172.31.255.254", "10.0.0.9"))
+        admitted, dropped = _run_set(packets, _packed(ips))
+        self.assertEqual(admitted, len(probes))
+        self.assertEqual(dropped, 1)
+
+    def test_empty_set_admits_nothing(self):
+        packets = [_pkt("198.18.0.1", "10.0.0.9")] * 3
+        admitted, dropped = _run_set(packets, b"")
+        self.assertEqual(admitted, 0)
+        self.assertEqual(dropped, 3)
+
+    def test_ipv6_never_matches_set(self):
+        ips = self._sequential(1000)
+        packets = [G.eth(0x86DD) + G.ipv6(17, "2001:db8::1", "2001:db8::2",
+                                          G.udp(1234, 53, b"z" * 8))]
+        admitted, dropped = _run_set(packets, _packed(ips))
+        self.assertEqual(admitted, 0)
+        self.assertEqual(dropped, 1)
+
+    def test_set_match_through_vlan_tag(self):
+        ips = self._sequential(1000)
+        inner = G.ipv4(6, _int2ip(ips[500]), "10.0.0.9", G.tcp(1234, 80, 0x10, b"y" * 4))
+        packets = [G.eth_vlan() + inner]
+        admitted, _ = _run_set(packets, _packed(ips))
+        self.assertEqual(admitted, 1)
+
+    def test_to_buffer_agrees_with_loop_filtered(self):
+        ips = self._sequential(100000)
+        probes = [ips[0], ips[50000], ips[-1]]
+        packets = [_pkt(_int2ip(v), "10.0.0.9") for v in probes]
+        packets.append(_pkt("10.0.0.1", "10.0.0.9"))
+        path = G.temp_pcap(packets)
+        try:
+            buf = bytearray(1 << 16)
+            r = pcapy.open_offline(path)
+            res = r.loop_to_buffer(-1, buf, ADMIT_SET_ONLY, _packed(ips), 0)
+            self.assertEqual(res[0], len(probes))     # written
+            self.assertEqual(res[1], 1)               # dropped
+            self.assertEqual(res[2], 0)               # overflow
+        finally:
+            os.unlink(path)
+
+
 if __name__ == "__main__":
     unittest.main()
