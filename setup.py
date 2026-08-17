@@ -59,7 +59,7 @@ def read(fname):
         f.close()
 
 setup(name=PACKAGE_NAME,
-      version="2.0.2",
+      version="2.1.0",
       url="https://github.com/stamparm/pcapy-ng/",
       project_urls={
           "Source": "https://github.com/stamparm/pcapy-ng/",

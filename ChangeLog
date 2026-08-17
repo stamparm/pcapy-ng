@@ -1,5 +1,5 @@
 2026-08-17 Miroslav Stampar <contact@sekuripy.hr>
-    * Not tagged yet (review fixes):
+    * Version 2.1.0 tagged (one behaviour change, one dropped support claim):
         * loop_filtered(), loop_to_buffer() and set_fanout() accept keyword arguments. Their
           docstrings and the README always documented calls like loop_filtered(..., flow_cutoff=3),
           but the methods were METH_VARARGS, so every such call raised TypeError.
