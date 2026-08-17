@@ -1,3 +1,22 @@
+2026-08-17 Miroslav Stampar <contact@sekuripy.hr>
+    * Not tagged yet (review fixes):
+        * loop_filtered(), loop_to_buffer() and set_fanout() accept keyword arguments. Their
+          docstrings and the README always documented calls like loop_filtered(..., flow_cutoff=3),
+          but the methods were METH_VARARGS, so every such call raised TypeError.
+        * Rewrote the flow-table key. The old fold multiplied the destination address by 40503,
+          which kept it below 2^48, so the top bits of the 64-bit key carried no destination
+          entropy; two flows could then share one counter and a real FLOW_HEAD would be dropped -
+          the one failure mode the design excludes (slot collisions are benign, they only restart
+          a counter). The key is now a splitmix64 finalizer over the whole 5-tuple, so every input
+          bit reaches all 64 output bits. Flow-head counts move by a fraction of a percent.
+        * Fixed two shifts into the sign bit of a signed int (undefined behaviour): the source
+          port in the old flow key, and PACKET_FANOUT_FLAG_DEFRAG (0x8000) in set_fanout().
+        * python_requires is now ">=3.9", matching the CI matrix, the wheels and the classifiers;
+          it previously admitted 2.7 and 3.8, which nothing builds or tests. The Python 2 code
+          paths in the C sources are untouched, just no longer advertised.
+        * benchmarks/results/ (results.csv, results.json, SUMMARY.md) is committed instead of
+          git-ignored, so every published ratio can be checked against the run behind it.
+
 2026-08-15 Miroslav Stampar <contact@sekuripy.hr>
     * Version 2.0.2 tagged (bugfix release; no API or behaviour changes):
         * Fixed the slot index of the loop_filtered()/loop_to_buffer() IPv4 address set. It

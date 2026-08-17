@@ -39,7 +39,7 @@ platform or interpreter, pip builds from the sdist.
 
 Building from source requires:
 
- * A Python interpreter. 2.7 and 3.x are supported.
+ * A Python interpreter. CPython 3.9 and newer are supported.
  * A C++ compiler.
  * Libpcap and its headers (libpcap-dev / libpcap-devel). On Windows, the
    Npcap SDK, with WPDPACK_BASE pointing at it.

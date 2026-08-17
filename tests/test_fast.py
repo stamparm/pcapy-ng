@@ -876,5 +876,99 @@ class TestAddrSetMembership(unittest.TestCase):
             os.unlink(path)
 
 
+class TestKeywordArguments(unittest.TestCase):
+    """The docstrings and the README document these calls with keyword arguments, so they have
+    to actually accept them (both methods used to be METH_VARARGS: flow_cutoff=3 -> TypeError)."""
+
+    def setUp(self):
+        pkts = [G.dns_packet("example.com"), G.http_packet(), G.syn_packet()] * 4
+        self.path = G.temp_pcap(pkts)
+
+    def tearDown(self):
+        os.unlink(self.path)
+
+    def test_loop_filtered_all_keywords(self):
+        kw = dict(admit_mask=ADMIT_ALL, addr_set=IOCSET, flow_cutoff=3, dpi_ports=None,
+                  tls_ports=None, dns_port=53, l2_offset=14, profile=1)
+        cb = lambda hdr, data, cls: None
+        by_kw = pcapy.open_offline(self.path).loop_filtered(-1, cb, **kw)
+        by_pos = pcapy.open_offline(self.path).loop_filtered(
+            -1, cb, ADMIT_ALL, IOCSET, 3, None, None, 53, 14, 1)
+        self.assertEqual(by_kw, by_pos)
+
+    def test_loop_filtered_cnt_and_cb_by_keyword(self):
+        seen = []
+        res = pcapy.open_offline(self.path).loop_filtered(
+            cnt=-1, cb=lambda hdr, data, cls: seen.append(cls), flow_cutoff=3)
+        self.assertEqual(res[0], len(seen))
+
+    def test_loop_to_buffer_all_keywords(self):
+        kw = dict(admit_mask=ADMIT_ALL, addr_set=IOCSET, flow_cutoff=3, dpi_ports=None,
+                  tls_ports=None, dns_port=53, l2_offset=14, profile=1)
+        b1, b2 = bytearray(1 << 16), bytearray(1 << 16)
+        by_kw = pcapy.open_offline(self.path).loop_to_buffer(-1, b1, **kw)
+        by_pos = pcapy.open_offline(self.path).loop_to_buffer(
+            -1, b2, ADMIT_ALL, IOCSET, 3, None, None, 53, 14, 1)
+        self.assertEqual(by_kw, by_pos)
+        self.assertEqual(b1, b2)
+
+    def test_unknown_keyword_rejected(self):
+        r = pcapy.open_offline(self.path)
+        self.assertRaises(TypeError, r.loop_filtered, -1, lambda h, d, c: None, no_such_arg=1)
+
+    def test_duplicate_argument_rejected(self):
+        r = pcapy.open_offline(self.path)
+        self.assertRaises(TypeError, r.loop_filtered, -1, lambda h, d, c: None, 7, admit_mask=7)
+
+
+class TestFlowKey(unittest.TestCase):
+    """The flow table folds a >96-bit 5-tuple into a 64-bit key. A SLOT collision only restarts
+    a counter (an extra head, documented), but a KEY collision would make two flows share one
+    counter and hide a real flow head -- the one thing the design must not do."""
+
+    @staticmethod
+    def _flows(n):
+        packets = []
+        for i in range(n):
+            src = "10.%d.%d.%d" % ((i >> 16) & 0xff, (i >> 8) & 0xff, i & 0xff)
+            dst = "203.0.113.%d" % (i & 0xff)
+            sport, dport = 1024 + (i % 64000), 443
+            for _ in range(3):                      # 3 packets on every flow
+                packets.append(G.eth() + G.ipv4(6, src, dst,
+                                                G.tcp(sport, dport, 0x10, b"x" * 8)))
+        return packets
+
+    def _heads(self, packets, cutoff):
+        path = G.temp_pcap(packets)
+        try:
+            r = pcapy.open_offline(path)
+            #                            generic profile: bit 1 = FLOW_HEAD
+            res = r.loop_filtered(-1, lambda h, d, c: None, admit_mask=(1 << 1),
+                                  flow_cutoff=cutoff, profile=0)
+            return res[0]
+        finally:
+            os.unlink(path)
+
+    def test_no_flow_head_is_suppressed(self):
+        n = 4000
+        packets = self._flows(n)
+        self.assertGreaterEqual(self._heads(packets, 1), n)      # never fewer than one per flow
+        self.assertGreaterEqual(self._heads(packets, 3), 3 * n)  # all 3 packets are heads
+
+    def test_distinct_ports_are_distinct_flows(self):
+        # same addresses, ports differing only in the high bit of the source port: these must not
+        # collapse onto one key (a plain `sport << 16` fold also invoked signed-shift UB here).
+        packets = []
+        for sport in (0x7fff, 0x8000, 0xffff, 0x0001):
+            packets.append(G.eth() + G.ipv4(6, "10.0.0.1", "10.0.0.2",
+                                            G.tcp(sport, 443, 0x10, b"y" * 8)))
+        self.assertEqual(self._heads(packets, 1), 4)
+
+    def test_reversed_direction_is_a_separate_flow(self):
+        a = G.eth() + G.ipv4(6, "10.0.0.1", "10.0.0.2", G.tcp(1111, 2222, 0x10, b"z" * 8))
+        b = G.eth() + G.ipv4(6, "10.0.0.2", "10.0.0.1", G.tcp(2222, 1111, 0x10, b"z" * 8))
+        self.assertEqual(self._heads([a, b], 1), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -8,7 +8,7 @@ Pcapy-NG is a Python extension module that lets Python programs use the
 on Python 3.10 ([issue](https://github.com/helpsystems/pcapy/issues/70)). The classic Pcapy API —
 `open_live`, `open_offline`, `loop`, `next`, `setfilter`, `dump_open` and the rest — is unchanged,
 so existing Pcapy code keeps working; it builds on Linux, macOS and Windows (libpcap / Npcap),
-on Python 2.7 and on current Python 3.
+on CPython 3.9 and newer.
 
 On top of that it provides an optional set of capture primitives for programs where per-packet
 Python work is the bottleneck: `loop_filtered` classifies packets in C and invokes the callback
@@ -60,9 +60,10 @@ build a checkout:
 pip install .
 ```
 
-The C sources still compile against Python 2.7, but the PEP 517 build requires
-`setuptools >= 61` (Python 3 only), so a Python 2.7 build has to be driven the old way:
-`python setup.py install`.
+Python 2.7 is not a supported target: `python_requires` is `>=3.9`, nothing in CI tests it and no
+wheel is built for it. The C sources do still carry their Python 2 code paths, so a 2.7 build can
+be driven the old way — `python setup.py install`, since the PEP 517 build needs
+`setuptools >= 61`, which is Python 3 only — but that is unsupported and untested.
 
 ---
 
@@ -98,6 +99,8 @@ dumper = cap.dump_open("out.pcap")               # write packets out
 ```python
 cap.loop_filtered(cnt, callback, admit_mask=7, addr_set=b"", flow_cutoff=0)
 ```
+
+Everything after `callback` is optional and can be passed positionally or by keyword.
 
 `loop_filtered` classifies each packet in C, hands your `callback(hdr, data, cls)` only the
 packets you asked for, and drops the rest **without building a Python object for them**. On a
@@ -171,8 +174,11 @@ flows, and `flow_cutoff=N` yields up to `N` packets *per direction*. There is no
 tracking (it counts packets per key) and no time-based expiry; the flow table is a fixed
 ~12 MB hash (about 1M entries, allocated only when `flow_cutoff > 0`) that evicts the
 least-recently-seen key on collision — so memory is bounded even under high-cardinality UDP,
-at the cost of an occasional re-count when a long-idle flow is evicted. IP fragments are not
-reassembled (non-first fragments aren't matched as flow heads).
+at the cost of an occasional re-count when a long-idle flow is evicted. Eviction can only make a
+flow look *new* again (an extra head), never hide one: the slot stores the full 64-bit key of the
+5-tuple, and that key is an avalanching hash, so two different flows sharing one counter — the
+only way a real flow head could be missed — is a ~2⁻⁶⁴ event rather than a property of the fold.
+IP fragments are not reassembled (non-first fragments aren't matched as flow heads).
 
 See [`examples/04_flow_heads.py`](https://github.com/stamparm/pcapy-ng/blob/master/examples/04_flow_heads.py).
 
@@ -349,8 +355,8 @@ Runnable, self-contained scripts in
 
 ## Building & compatibility ##
 
-Builds from source on Python 2.7 and Python 3.x, on Linux, macOS and Windows (libpcap / Npcap);
-all it needs is a C++ compiler and the libpcap headers. CI builds and tests every commit on
+Builds from source on CPython 3.9–3.14, on Linux, macOS and Windows (libpcap / Npcap); all it
+needs is a C++ compiler and the libpcap headers. CI builds and tests every commit on
 CPython 3.9–3.14 (Linux and macOS). Wheels are produced for those two platforms only, with
 [cibuildwheel](https://cibuildwheel.readthedocs.io/), and vendor libpcap, so installing from a
 wheel needs no compiler or `libpcap-dev`. **There are no Windows wheels** — on Windows pip builds

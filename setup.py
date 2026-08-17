@@ -76,8 +76,10 @@ setup(name=PACKAGE_NAME,
       long_description_content_type="text/markdown",
       keywords=["pcap", "libpcap", "sniffer", "packet capture", "network", "pcapy", "npcap"],
       license="Apache-2.0",
-      # 2.7 and 3.8+ are supported and tested; 3.0-3.7 are not.
-      python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, !=3.6.*, !=3.7.*",
+      # CPython 3.9-3.14: what CI builds and tests, and what wheels are published for. The C
+      # sources still carry their Python 2 paths, so `python setup.py install` under 2.7 can
+      # still work, but nothing tests it and pip metadata does not claim it.
+      python_requires=">=3.9",
       classifiers=[
           "Development Status :: 5 - Production/Stable",
           "Intended Audience :: Developers",
@@ -90,10 +92,7 @@ setup(name=PACKAGE_NAME,
           "Operating System :: POSIX :: Linux",
           "Operating System :: POSIX :: BSD",
           "Programming Language :: C++",
-          "Programming Language :: Python :: 2",
-          "Programming Language :: Python :: 2.7",
           "Programming Language :: Python :: 3",
-          "Programming Language :: Python :: 3.8",
           "Programming Language :: Python :: 3.9",
           "Programming Language :: Python :: 3.10",
           "Programming Language :: Python :: 3.11",

@@ -90,23 +90,23 @@ static PyObject* p_sendpacket(pcapobject* pp, PyObject* args);
 static PyObject* p_stats( pcapobject* pp, PyObject*);
 static PyObject* p__enter__( pcapobject* pp, PyObject*);
 static PyObject* p_getfd(pcapobject* pp, PyObject* args);
-static PyObject* p_set_fanout(pcapobject* pp, PyObject* args);
+static PyObject* p_set_fanout(pcapobject* pp, PyObject* args, PyObject* kwargs);
 static PyObject* p_set_snaplen(pcapobject* pp, PyObject* args);
 static PyObject* p_set_promisc(pcapobject* pp, PyObject* args);
 static PyObject* p_set_timeout(pcapobject* pp, PyObject* args);
 static PyObject* p_set_buffer_size(pcapobject* pp, PyObject* args);
 static PyObject* p_set_rfmon(pcapobject* pp, PyObject* args);
 static PyObject* p_activate(pcapobject* pp, PyObject* args);
-static PyObject* p_loop_filtered(pcapobject* pp, PyObject* args);
+static PyObject* p_loop_filtered(pcapobject* pp, PyObject* args, PyObject* kwargs);
 static PyObject* p_filtered_stats(pcapobject* pp, PyObject*);
-static PyObject* p_loop_to_buffer(pcapobject* pp, PyObject* args);
+static PyObject* p_loop_to_buffer(pcapobject* pp, PyObject* args, PyObject* kwargs);
 static PyObject* p_next_batch(pcapobject* pp, PyObject* args);
 
 static PyMethodDef p_methods[] = {
   {"loop", (PyCFunction) p_loop, METH_VARARGS, "loops packet dispatching"},
-  {"loop_filtered", (PyCFunction) p_loop_filtered, METH_VARARGS, "loop_filtered(cnt, cb, admit_mask=7, addr_set=b'', flow_cutoff=0, dpi_ports=None, tls_ports=None, dns_port=53, l2_offset=14, profile=0): classify each packet in C and invoke cb(hdr, data, cls) ONLY for admitted classes (admit_mask is a bitmask over class indices); dropped classes never build a Python object. GENERIC profile (default) classes: 0=OTHER, 1=FLOW_HEAD (within first flow_cutoff packets of a flow -- BPF can't track flows), 2=SET_MATCH (src/dst in addr_set, a packed 4-byte network-order IPv4 set of any size -- BPF can't hold large sets). l2_offset is where the IPv4 header begins (Ethernet=14, LINUX_SLL=16, DLT_RAW=0); VLAN tags are skipped. profile=1 selects a built-in security classifier (classes 100..105: DNS/HTTP/noise/IP-set/handshake/SYN) using dns_port/dpi_ports/tls_ports. Returns (admitted, dropped, <per-class counts>)."},
+  {"loop_filtered", (PyCFunction)(void(*)(void)) p_loop_filtered, METH_VARARGS | METH_KEYWORDS, "loop_filtered(cnt, cb, admit_mask=7, addr_set=b'', flow_cutoff=0, dpi_ports=None, tls_ports=None, dns_port=53, l2_offset=14, profile=0): classify each packet in C and invoke cb(hdr, data, cls) ONLY for admitted classes (admit_mask is a bitmask over class indices); dropped classes never build a Python object. GENERIC profile (default) classes: 0=OTHER, 1=FLOW_HEAD (within first flow_cutoff packets of a flow -- BPF can't track flows), 2=SET_MATCH (src/dst in addr_set, a packed 4-byte network-order IPv4 set of any size -- BPF can't hold large sets). l2_offset is where the IPv4 header begins (Ethernet=14, LINUX_SLL=16, DLT_RAW=0); VLAN tags are skipped. profile=1 selects a built-in security classifier (classes 100..105: DNS/HTTP/noise/IP-set/handshake/SYN) using dns_port/dpi_ports/tls_ports. Returns (admitted, dropped, <per-class counts>)."},
   {"filtered_stats", (PyCFunction) p_filtered_stats, METH_NOARGS, "filtered_stats(): live counter snapshot of the current/last loop_filtered run, safe to poll from another thread. Returns (admitted, dropped, <per-class counts>) matching the active profile."},
-  {"loop_to_buffer", (PyCFunction) p_loop_to_buffer, METH_VARARGS, "loop_to_buffer(cnt, writable_buf, admit_mask=7, addr_set=b'', flow_cutoff=0, dpi_ports=None, tls_ports=None, dns_port=53, l2_offset=14, profile=0): same classification as loop_filtered, but writes admitted packets into writable_buf (e.g. a multiprocessing.shared_memory buffer) as [u32 caplen LE][u8 class][caplen bytes] with the GIL released for the whole loop (no per-packet Python); worker processes drain it in parallel. Returns (written, dropped, overflow, bytes_used, <per-class counts>)."},
+  {"loop_to_buffer", (PyCFunction)(void(*)(void)) p_loop_to_buffer, METH_VARARGS | METH_KEYWORDS, "loop_to_buffer(cnt, writable_buf, admit_mask=7, addr_set=b'', flow_cutoff=0, dpi_ports=None, tls_ports=None, dns_port=53, l2_offset=14, profile=0): same classification as loop_filtered, but writes admitted packets into writable_buf (e.g. a multiprocessing.shared_memory buffer) as [u32 caplen LE][u8 class][caplen bytes] with the GIL released for the whole loop (no per-packet Python); worker processes drain it in parallel. Returns (written, dropped, overflow, bytes_used, <per-class counts>)."},
   {"next_batch", (PyCFunction) p_next_batch, METH_VARARGS, "next_batch(max_n): capture up to max_n packets in ONE call; returns (packet_bytes, packed_meta) where packed_meta is an array of 16-byte records, one per packet, each four native-endian uint32 (sec, usec, offset, caplen); offset/caplen slice the packet out of packet_bytes. Empty packed_meta = EOF/timeout. Amortizes the per-packet C<->Python boundary."},
   {"dispatch", (PyCFunction) p_dispatch, METH_VARARGS, "dispatchs packets"},
   {"next", (PyCFunction) p_next, METH_NOARGS, "returns next packet"},
@@ -130,7 +130,7 @@ static PyMethodDef p_methods[] = {
   {"__exit__", (PyCFunction) p_close, METH_VARARGS, NULL},
 #ifndef WIN32
   {"getfd", (PyCFunction) p_getfd, METH_VARARGS, "get selectable pcap fd"},
-  {"set_fanout", (PyCFunction) p_set_fanout, METH_VARARGS, "set_fanout(group_id, fanout_type=PACKET_FANOUT_HASH): Linux only. Join this (live, activated) capture's AF_PACKET socket to a PACKET_FANOUT group so the kernel load-balances one interface's packets across every capture handle sharing the same group_id. Open N handles, set_fanout(g) on each, and run N capture loops to scale capture past one thread (each flow stays on one handle with PACKET_FANOUT_HASH). Raises on non-Linux or a non-live handle."},
+  {"set_fanout", (PyCFunction)(void(*)(void)) p_set_fanout, METH_VARARGS | METH_KEYWORDS, "set_fanout(group_id, fanout_type=PACKET_FANOUT_HASH): Linux only. Join this (live, activated) capture's AF_PACKET socket to a PACKET_FANOUT group so the kernel load-balances one interface's packets across every capture handle sharing the same group_id. Open N handles, set_fanout(g) on each, and run N capture loops to scale capture past one thread (each flow stays on one handle with PACKET_FANOUT_HASH). Raises on non-Linux or a non-live handle."},
   {"set_rfmon", (PyCFunction)p_set_rfmon, METH_VARARGS, "set monitor mode for a not-yet-activated capture handle"}, /* Available on Npcap, not on Winpcap. */
 #endif
   {NULL, NULL}	/* sentinel */
@@ -855,7 +855,7 @@ p_getfd(pcapobject* pp, PyObject* args)
    kernel PACKET_FANOUT group so one interface's traffic is load-balanced across every handle in
    the same group. Linux-only; needs a live, activated handle (pcap_fileno gives the socket fd). */
 static PyObject*
-p_set_fanout(pcapobject* pp, PyObject* args)
+p_set_fanout(pcapobject* pp, PyObject* args, PyObject* kwargs)
 {
   if (Py_TYPE(pp) != &Pcaptype)
     {
@@ -869,8 +869,9 @@ p_set_fanout(pcapobject* pp, PyObject* args)
 #if defined(__linux__) && defined(PACKET_FANOUT)
   int group_id;
   int fanout_type = PACKET_FANOUT_HASH;
+  static char* kwlist[] = { (char*)"group_id", (char*)"fanout_type", NULL };
 
-  if (!PyArg_ParseTuple(args, "i|i:set_fanout", &group_id, &fanout_type))
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|i:set_fanout", kwlist, &group_id, &fanout_type))
     return NULL;
 
   int fd = pcap_fileno(pp->pcap);
@@ -880,7 +881,9 @@ p_set_fanout(pcapobject* pp, PyObject* args)
       return NULL;
     }
 
-  int arg = (group_id & 0xffff) | (fanout_type << 16);
+  /* PACKET_FANOUT_FLAG_DEFRAG is 0x8000, so `fanout_type << 16` on a signed int would shift
+     into the sign bit (UB); build the word in unsigned and convert once. */
+  int arg = (int)(((unsigned)group_id & 0xffffu) | ((unsigned)fanout_type << 16));
   if (setsockopt(fd, SOL_PACKET, PACKET_FANOUT, &arg, sizeof(arg)) < 0)
     {
       PyErr_SetFromErrno(PcapError);
@@ -891,6 +894,7 @@ p_set_fanout(pcapobject* pp, PyObject* args)
   return Py_None;
 #else
   (void) args;
+  (void) kwargs;
   PyErr_SetString(PcapError, "PACKET_FANOUT is only available on Linux");
   return NULL;
 #endif
@@ -1042,9 +1046,32 @@ static struct mt_flowtab* flowtab_build(unsigned int bits)
   f->mask = cap - 1;
   return f;
 }
+/* 64-bit key over the directional 5-tuple (>96 bits in, 64 out, so folding is unavoidable).
+   The fold must avalanche: a SLOT collision is benign by design (the full-key compare below
+   resets the counter, so the flow simply restarts and admits an extra head), but a KEY
+   collision makes two flows share one counter and can suppress a real FLOW_HEAD -- the one
+   failure mode this design rules out. A splitmix64 finalizer spreads every input bit over all
+   64 output bits, putting that at ~2^-64 per flow pair; an XOR of small multipliers would leave
+   the destination address confined to the low ~48 bits. Ports are widened before shifting, so
+   nothing is shifted into the sign bit of an int. */
+static inline unsigned long long flow_key(unsigned int sip, unsigned int dip,
+                                          unsigned int sport, unsigned int dport,
+                                          unsigned int proto)
+{
+  unsigned long long a = ((unsigned long long)sip << 32) | dip;
+  unsigned long long b = ((unsigned long long)(sport & 0xffffu) << 48)
+                       | ((unsigned long long)(dport & 0xffffu) << 32)
+                       | (proto & 0xffu);
+  a ^= b * 0x9E3779B97F4A7C15ULL;
+  a ^= a >> 30; a *= 0xBF58476D1CE4E5B9ULL;
+  a ^= a >> 27; a *= 0x94D049BB133111EBULL;
+  a ^= a >> 31;
+  return a;
+}
+
 static inline unsigned int flow_seen(struct mt_flowtab* f, unsigned long long key)
 {
-  unsigned int slot = (unsigned int)((key * 1099511628211ULL) >> 40) & f->mask;
+  unsigned int slot = (unsigned int)key & f->mask;     /* key is already fully avalanched */
   if (f->keys[slot] != key) { f->keys[slot] = key; f->cnt[slot] = 0; }   /* new flow / evicted */
   return f->cnt[slot]++;                                                  /* count before increment */
 }
@@ -1085,13 +1112,10 @@ static inline int classify_generic(const struct mt_classcfg* cfg, struct mt_ipse
     if (proto == 6 || proto == 17) {                          /* flow key needs ports */
       unsigned int ihl = (p[l3] & 0x0f) * 4, l4 = l3 + ihl;
       if (ihl >= 20 && len >= l4 + 4) {
-        unsigned short sp = (p[l4] << 8) | p[l4 + 1];
-        unsigned short dp = (p[l4 + 2] << 8) | p[l4 + 3];
-        unsigned long long key = ((unsigned long long)sip * 2654435761u)
-                               ^ ((unsigned long long)dip * 40503u)
-                               ^ (((unsigned long long)((sp << 16) | dp)) * 2246822519ull)
-                               ^ (unsigned)proto;
-        if (flow_seen(flowtab, key) < flow_cutoff) return 1;  /* FLOW_HEAD */
+        unsigned int sp = ((unsigned)p[l4] << 8) | p[l4 + 1];
+        unsigned int dp = ((unsigned)p[l4 + 2] << 8) | p[l4 + 3];
+        if (flow_seen(flowtab, flow_key(sip, dip, sp, dp, (unsigned)proto)) < flow_cutoff)
+          return 1;                                           /* FLOW_HEAD */
       }
     }
   }
@@ -1111,10 +1135,7 @@ static inline int classify_refine(const struct mt_classcfg* cfg, struct mt_ipset
     if (ioc && (ipset_has(ioc, sip) || ipset_has(ioc, dip)))
       cls = 3;                                             /* known-bad IP, ANY protocol incl ICMP */
     else if (pi.cand && flowtab && mt_is_tls_port(cfg, pi.sport, pi.dport)) {
-      unsigned long long key = ((unsigned long long)sip * 2654435761u)
-                             ^ ((unsigned long long)dip * 40503u)
-                             ^ (((unsigned long long)((pi.sport << 16) | pi.dport)) * 2246822519ull)
-                             ^ (unsigned)pi.proto;
+      unsigned long long key = flow_key(sip, dip, pi.sport, pi.dport, (unsigned)pi.proto);
       if (flow_seen(flowtab, key) < flow_cutoff) cls = 4;
     }
   }
@@ -1196,8 +1217,11 @@ static unsigned short* seq_to_ports(PyObject* seq, unsigned int* outn, int* err)
 }
 
 static PyObject*
-p_loop_filtered(pcapobject* pp, PyObject* args)
+p_loop_filtered(pcapobject* pp, PyObject* args, PyObject* kwargs)
 {
+  static char* kwlist[] = { (char*)"cnt", (char*)"cb", (char*)"admit_mask", (char*)"addr_set",
+                            (char*)"flow_cutoff", (char*)"dpi_ports", (char*)"tls_ports",
+                            (char*)"dns_port", (char*)"l2_offset", (char*)"profile", NULL };
   int cant, admit_mask = 7;    /* generic default: admit OTHER(0)+FLOW_HEAD(1)+SET_MATCH(2) */
   int flow_cutoff = 0;
   int dns_port = 53;
@@ -1209,9 +1233,9 @@ p_loop_filtered(pcapobject* pp, PyObject* args)
   if (Py_TYPE(pp) != &Pcaptype) { PyErr_SetString(PcapError, "Not a pcap object"); return NULL; }
   if (!pp->pcap) return err_closed();
 #if PY_MAJOR_VERSION >= 3
-  if (!PyArg_ParseTuple(args, "iO|iy#iOOiii:loop_filtered", &cant, &PyFunc, &admit_mask, &iocbuf, &ioclen, &flow_cutoff, &dpi_seq, &tls_seq, &dns_port, &l2_offset, &profile)) return NULL;
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO|iy#iOOiii:loop_filtered", kwlist, &cant, &PyFunc, &admit_mask, &iocbuf, &ioclen, &flow_cutoff, &dpi_seq, &tls_seq, &dns_port, &l2_offset, &profile)) return NULL;
 #else
-  if (!PyArg_ParseTuple(args, "iO|is#iOOiii:loop_filtered", &cant, &PyFunc, &admit_mask, &iocbuf, &ioclen, &flow_cutoff, &dpi_seq, &tls_seq, &dns_port, &l2_offset, &profile)) return NULL;
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO|is#iOOiii:loop_filtered", kwlist, &cant, &PyFunc, &admit_mask, &iocbuf, &ioclen, &flow_cutoff, &dpi_seq, &tls_seq, &dns_port, &l2_offset, &profile)) return NULL;
 #endif
   if (l2_offset < 0 || l2_offset > 64) { PyErr_SetString(PyExc_ValueError, "l2_offset out of range [0,64]"); return NULL; }
   if (profile != 0 && profile != 1) { PyErr_SetString(PyExc_ValueError, "profile must be 0 (generic) or 1 (security)"); return NULL; }
@@ -1307,8 +1331,12 @@ BufferCallBack(u_char* user, const struct pcap_pkthdr* h, const u_char* pkt)
 }
 
 static PyObject*
-p_loop_to_buffer(pcapobject* pp, PyObject* args)
+p_loop_to_buffer(pcapobject* pp, PyObject* args, PyObject* kwargs)
 {
+  static char* kwlist[] = { (char*)"cnt", (char*)"writable_buf", (char*)"admit_mask",
+                            (char*)"addr_set", (char*)"flow_cutoff", (char*)"dpi_ports",
+                            (char*)"tls_ports", (char*)"dns_port", (char*)"l2_offset",
+                            (char*)"profile", NULL };
   int cant, admit_mask = 7, flow_cutoff = 0, dns_port = 53, l2_offset = 14, profile = 0;
   Py_buffer view;
   PyObject* dpi_seq = NULL; PyObject* tls_seq = NULL;
@@ -1316,9 +1344,9 @@ p_loop_to_buffer(pcapobject* pp, PyObject* args)
   if (Py_TYPE(pp) != &Pcaptype) { PyErr_SetString(PcapError, "Not a pcap object"); return NULL; }
   if (!pp->pcap) return err_closed();
 #if PY_MAJOR_VERSION >= 3
-  if (!PyArg_ParseTuple(args, "iw*|iy#iOOiii:loop_to_buffer", &cant, &view, &admit_mask, &iocbuf, &ioclen, &flow_cutoff, &dpi_seq, &tls_seq, &dns_port, &l2_offset, &profile)) return NULL;
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iw*|iy#iOOiii:loop_to_buffer", kwlist, &cant, &view, &admit_mask, &iocbuf, &ioclen, &flow_cutoff, &dpi_seq, &tls_seq, &dns_port, &l2_offset, &profile)) return NULL;
 #else
-  if (!PyArg_ParseTuple(args, "iw*|is#iOOiii:loop_to_buffer", &cant, &view, &admit_mask, &iocbuf, &ioclen, &flow_cutoff, &dpi_seq, &tls_seq, &dns_port, &l2_offset, &profile)) return NULL;
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iw*|is#iOOiii:loop_to_buffer", kwlist, &cant, &view, &admit_mask, &iocbuf, &ioclen, &flow_cutoff, &dpi_seq, &tls_seq, &dns_port, &l2_offset, &profile)) return NULL;
 #endif
   if (l2_offset < 0 || l2_offset > 64) { PyBuffer_Release(&view); PyErr_SetString(PyExc_ValueError, "l2_offset out of range [0,64]"); return NULL; }
   if (profile != 0 && profile != 1) { PyBuffer_Release(&view); PyErr_SetString(PyExc_ValueError, "profile must be 0 or 1"); return NULL; }
