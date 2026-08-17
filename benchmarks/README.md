@@ -24,8 +24,8 @@ itself with `sys.executable`, so run it with the interpreter you want to measure
 | `pyequiv.py` | Python implementations of the same decisions the C classifier makes |
 | `bench.py` | the harness: scenarios, repetitions, metrics, CSV/JSON/Markdown output |
 | `fanout_live.py` | **optional**, Linux-only, live `PACKET_FANOUT` check (not reproducible) |
-| `data/` | generated capture + manifest (git-ignored) |
-| `results/` | `results.csv`, `results.json`, `SUMMARY.md` (git-ignored) |
+| `data/` | generated capture + manifest (git-ignored: ~175 MiB, regenerate with `gen_pcap.py`) |
+| `results/` | `results.csv`, `results.json`, `SUMMARY.md` — **committed**, so every published number can be checked against the run that produced it |
 
 ## Methodology
 
@@ -112,3 +112,7 @@ quoting any number:
 * the admitted counts — a fast path that admits the wrong number of packets is a bug, not a win;
 * `setup_median_s` for the large address sets;
 * peak RSS for the buffer scenarios, which allocate the whole capture plus per-record headers.
+
+The committed `results/` is one machine at one moment — the exact CPU, kernel, Python and libpcap
+are in the Environment table at the top of `SUMMARY.md`, and every ratio quoted elsewhere in the
+project comes from that run. Re-running `bench.py` overwrites all three files.
