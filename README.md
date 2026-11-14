@@ -293,9 +293,17 @@ spreads the interface's packets across them without duplicating any. With the de
 `PACKET_FANOUT_HASH` every flow stays on one handle, so per-flow state stays consistent.
 
 ```python
-cap = pcapy.open_live(dev, 65535, True, 100)
-cap.set_fanout(0x4711, pcapy.PACKET_FANOUT_HASH)
+first = pcapy.open_live(dev, 65535, True, 100)
+other = pcapy.open_live(dev, 65535, True, 100)
+first.set_fanout(None, pcapy.PACKET_FANOUT_HASH) # kernel allocates an unused group id
+group_id, fanout_type = first.get_fanout()
+other.set_fanout(group_id, fanout_type) # same group, same type
 ```
+
+`group_id` is an int in `[0, 65535]`, or `None`. `None` asks the kernel to allocate an unused id
+(`PACKET_FANOUT_FLAG_UNIQUEID`, Linux 4.12 or newer) so two processes do not accidentally join the
+same group. `get_fanout()` returns `(group_id, fanout_type)` for a handle that has already joined.
+Pass both values to `set_fanout()` on the next handle.
 
 Constants: `PACKET_FANOUT_HASH`, `PACKET_FANOUT_LB`, `PACKET_FANOUT_CPU`, `PACKET_FANOUT_ROLLOVER`,
 `PACKET_FANOUT_RND`. Linux only, live handles only; anything else raises. See
@@ -326,7 +334,8 @@ then `activate()`.
 | `loop_to_buffer(cnt, buf, ...same...)` | same, but write admitted packets into `buf` with the GIL released |
 | `filtered_stats()` | live counter snapshot of the current/last run |
 | `next_batch(max_n)` | read up to `max_n` packets in one call as `(packet_bytes, packed_meta)` |
-| `set_fanout(group_id, fanout_type=PACKET_FANOUT_HASH)` | Linux: join this live handle to a kernel `PACKET_FANOUT` group |
+| `set_fanout(group_id, fanout_type=PACKET_FANOUT_HASH)` | Linux: join this live handle to a kernel `PACKET_FANOUT` group. `group_id=None` allocates an unused id |
+| `get_fanout()` | Linux: `(group_id, fanout_type)` for the group this live handle joined |
 
 `cnt = -1`/`0` means "until EOF (offline) or forever (live)".
 
