@@ -20,12 +20,21 @@ SNAPLEN, PROMISC, TIMEOUT_MS = 65535, True, 100
 def main():
     dev = sys.argv[1] if len(sys.argv) > 1 else pcapy.lookupdev()
     n = int(sys.argv[2]) if len(sys.argv) > 2 else 4
-    group = 0x4711                       # any 16-bit id; the same value ties the sockets together
+    group = None   # any 16-bit id or None; the same value ties the sockets together
+                   # None automatically allocates a unique id, preventing collision
+    fanout_type = pcapy.PACKET_FANOUT_HASH
     counts = [0] * n
+    caps = []
+
+    for _ in range(n):
+        cap = pcapy.open_live(dev, SNAPLEN, PROMISC, TIMEOUT_MS)
+        cap.set_fanout(group, fanout_type)   # join the group; flow-hashed distribution
+        if group is None:
+            group, fanout_type = cap.get_fanout()
+        caps.append(cap)
 
     def worker(idx):
-        cap = pcapy.open_live(dev, SNAPLEN, PROMISC, TIMEOUT_MS)
-        cap.set_fanout(group, pcapy.PACKET_FANOUT_HASH)   # join the group; flow-hashed distribution
+        cap = caps[idx]
         while True:
             try:
                 hdr, _ = cap.next()
@@ -34,7 +43,8 @@ def main():
             if hdr is not None:
                 counts[idx] += 1
 
-    print("capturing on %s across %d fanout sockets ... (Ctrl-C to stop)" % (dev, n))
+    print("capturing on %s across %d fanout sockets (group %s) ... (Ctrl-C to stop)"
+          % (dev, n, group))
     for i in range(n):
         t = threading.Thread(target=worker, args=(i,))
         t.daemon = True

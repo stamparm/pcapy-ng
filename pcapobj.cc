@@ -91,6 +91,7 @@ static PyObject* p_stats( pcapobject* pp, PyObject*);
 static PyObject* p__enter__( pcapobject* pp, PyObject*);
 static PyObject* p_getfd(pcapobject* pp, PyObject* args);
 static PyObject* p_set_fanout(pcapobject* pp, PyObject* args, PyObject* kwargs);
+static PyObject* p_get_fanout(pcapobject* pp, PyObject*);
 static PyObject* p_set_snaplen(pcapobject* pp, PyObject* args);
 static PyObject* p_set_promisc(pcapobject* pp, PyObject* args);
 static PyObject* p_set_timeout(pcapobject* pp, PyObject* args);
@@ -130,7 +131,8 @@ static PyMethodDef p_methods[] = {
   {"__exit__", (PyCFunction) p_close, METH_VARARGS, NULL},
 #ifndef WIN32
   {"getfd", (PyCFunction) p_getfd, METH_VARARGS, "get selectable pcap fd"},
-  {"set_fanout", (PyCFunction)(void(*)(void)) p_set_fanout, METH_VARARGS | METH_KEYWORDS, "set_fanout(group_id, fanout_type=PACKET_FANOUT_HASH): Linux only. Join this (live, activated) capture's AF_PACKET socket to a PACKET_FANOUT group so the kernel load-balances one interface's packets across every capture handle sharing the same group_id. Open N handles, set_fanout(g) on each, and run N capture loops to scale capture past one thread (each flow stays on one handle with PACKET_FANOUT_HASH). Raises on non-Linux or a non-live handle."},
+  {"set_fanout", (PyCFunction)(void(*)(void)) p_set_fanout, METH_VARARGS | METH_KEYWORDS, "set_fanout(group_id, fanout_type=PACKET_FANOUT_HASH): Linux only. Join this (live, activated) capture's AF_PACKET socket to a PACKET_FANOUT group so the kernel load-balances one interface's packets across every capture handle sharing the same group_id. group_id is an int in [0, 65535], or None to ask the kernel for an unused id (Linux 4.12+); read that id back with get_fanout() and pass it to the other handles. Open N handles, set_fanout(g) on each, and run N capture loops to scale capture past one thread (each flow stays on one handle with PACKET_FANOUT_HASH). Raises on non-Linux, a non-live handle, or a group_id that is not an int or None."},
+  {"get_fanout", (PyCFunction)p_get_fanout, METH_NOARGS, "get_fanout(): Linux only. Return (group_id, fanout_type) for the PACKET_FANOUT group this live handle has joined. Raises on non-Linux or a non-live handle."},
   {"set_rfmon", (PyCFunction)p_set_rfmon, METH_VARARGS, "set monitor mode for a not-yet-activated capture handle"}, /* Available on Npcap, not on Winpcap. */
 #endif
   {NULL, NULL}	/* sentinel */
@@ -853,7 +855,9 @@ p_getfd(pcapobject* pp, PyObject* args)
 
 /* set_fanout(group_id, fanout_type=PACKET_FANOUT_HASH): join this live AF_PACKET capture to a
    kernel PACKET_FANOUT group so one interface's traffic is load-balanced across every handle in
-   the same group. Linux-only; needs a live, activated handle (pcap_fileno gives the socket fd). */
+   the same group. Linux-only; needs a live, activated handle (pcap_fileno gives the socket fd).
+   group_id None allocates an unused id when PACKET_FANOUT_FLAG_UNIQUEID is available; read it
+   back with get_fanout() and pass that id to the other handles. */
 static PyObject*
 p_set_fanout(pcapobject* pp, PyObject* args, PyObject* kwargs)
 {
@@ -867,12 +871,42 @@ p_set_fanout(pcapobject* pp, PyObject* args, PyObject* kwargs)
     return err_closed();
 
 #if defined(__linux__) && defined(PACKET_FANOUT)
-  int group_id;
+  PyObject* group_id_obj;
+  unsigned long group_id = 0;
   int fanout_type = PACKET_FANOUT_HASH;
   static char* kwlist[] = { (char*)"group_id", (char*)"fanout_type", NULL };
 
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|i:set_fanout", kwlist, &group_id, &fanout_type))
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|i:set_fanout", kwlist,
+                                   &group_id_obj, &fanout_type))
     return NULL;
+
+  if (fanout_type < 0 || fanout_type > 0xffff)
+    {
+      PyErr_SetString(PyExc_ValueError, "fanout_type out of range [0,65535]");
+      return NULL;
+    }
+
+  if (group_id_obj == Py_None)
+    {
+#ifndef PACKET_FANOUT_FLAG_UNIQUEID
+      PyErr_SetString(PcapError, "allocating a fanout group id requires Linux 4.12+");
+      return NULL;
+#else
+      group_id = 0;
+      fanout_type |= PACKET_FANOUT_FLAG_UNIQUEID;
+#endif
+    }
+  else
+    {
+      group_id = PyLong_AsUnsignedLong(group_id_obj);
+      if (group_id == (unsigned long)-1 && PyErr_Occurred())
+        return NULL;
+      if (group_id > 0xffffUL)
+        {
+          PyErr_SetString(PyExc_ValueError, "group_id out of range [0,65535]");
+          return NULL;
+        }
+    }
 
   int fd = pcap_fileno(pp->pcap);
   if (fd < 0)
@@ -895,6 +929,49 @@ p_set_fanout(pcapobject* pp, PyObject* args, PyObject* kwargs)
 #else
   (void) args;
   (void) kwargs;
+  PyErr_SetString(PcapError, "PACKET_FANOUT is only available on Linux");
+  return NULL;
+#endif
+}
+
+/* get_fanout(): (group_id, fanout_type) for this live socket. Linux-only. */
+static PyObject*
+p_get_fanout(pcapobject* pp, PyObject*)
+{
+  if (Py_TYPE(pp) != &Pcaptype)
+    {
+      PyErr_SetString(PcapError, "Not a pcap object");
+      return NULL;
+    }
+
+  if (!pp->pcap)
+    return err_closed();
+
+#if defined(__linux__) && defined(PACKET_FANOUT)
+  int fd = pcap_fileno(pp->pcap);
+  if (fd < 0)
+    {
+      PyErr_SetString(PcapError, "no socket fd for this capture (PACKET_FANOUT needs a live AF_PACKET capture, not an offline pcap)");
+      return NULL;
+    }
+
+  int arg = 0;
+  socklen_t arglen = sizeof(arg);
+  if (getsockopt(fd, SOL_PACKET, PACKET_FANOUT, &arg, &arglen) < 0)
+    {
+      PyErr_SetFromErrno(PcapError);
+      return NULL;
+    }
+  if (arglen != sizeof(arg))
+    {
+      PyErr_SetString(PcapError, "short PACKET_FANOUT getsockopt result");
+      return NULL;
+    }
+
+  unsigned short group_id = arg & 0xffffu;
+  unsigned short fanout_type = (unsigned int)arg >> 16 & 0xffffu;
+  return Py_BuildValue("HH", group_id, fanout_type);
+#else
   PyErr_SetString(PcapError, "PACKET_FANOUT is only available on Linux");
   return NULL;
 #endif
